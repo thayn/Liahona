@@ -6,7 +6,7 @@
  *  - a dial with 36 ticks and N / E / S / W that turns so N points north
  *  - thin cream spindle   -> north
  *  - gold glowing spindle -> the station (or a marked spot); with no station
- *    it drifts gently near north, "waiting"
+ *    it rests on north
  *  - distance in Cinzel ("340 m") with a small caption ("TO MARKED SPOT")
  *
  * All sizes are the concept's 380 px drawing scaled to the 720 px screen.
@@ -244,9 +244,9 @@ void ui_compass_tick(const liahona_state_t *s)
         else snprintf(big, sizeof(big), "%.1f km", dist / 1000.0);
         snprintf(small, sizeof(small), "TO MARKED SPOT");
     } else {
-        /* no station: the spindle rests near north and drifts a little */
-        float t = esp_timer_get_time() / 1e6f;
-        want = -s_heading + 9.0f * sinf(t * 0.7f) + 4.0f * sinf(t * 1.9f);
+        /* no station: the gold spindle rests on north (no drifting, which
+         * on the bench looked like the dial was out of step with the spindles) */
+        want = -s_heading;
         if (s->mag == TEST_PASS) snprintf(big, sizeof(big), "%d\xC2\xB0", (int)(s_heading + 0.5f) % 360);
         else snprintf(big, sizeof(big), "--");
         snprintf(small, sizeof(small), s->target_set ? "WAITING FOR GPS" : "NO STATION SET");
