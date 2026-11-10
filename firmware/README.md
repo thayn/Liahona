@@ -5,7 +5,7 @@ Built and checked with **ESP-IDF v6.1** (target `esp32p4`). It compiles cleanly,
 
 ## What it does
 - **Compass screen**, styled like the concept renderings:
-  - The dial turns so **N** points north. The thin cream spindle points north too.
+  - A fixed dial with **N at the top**, as in the concept. Only the spindles turn: the thin cream spindle points north.
   - The **gold spindle** points to the station. With no station set, it rests near north and drifts gently.
   - With a station, the distance shows in the middle ("340 m"); without one, the heading.
   - **Press and hold anywhere** to open the self-test.

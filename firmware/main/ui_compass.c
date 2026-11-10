@@ -3,7 +3,7 @@
  *
  *  - gold rim, dark warm radial background, faint glow ring (drawn once
  *    into an image at start-up, with dithering so the gradient doesn't band)
- *  - a dial with 36 ticks and N / E / S / W that turns so N points north
+ *  - a fixed dial (N at the top) with 36 ticks, as in the concept
  *  - thin cream spindle   -> north
  *  - gold glowing spindle -> the station (or a marked spot); with no station
  *    it rests on north
@@ -159,7 +159,8 @@ static void draw_cb(lv_event_t *e)
     lv_layer_t *L = lv_event_get_layer(e);
     const float north = -s_heading;          /* where north is on screen */
 
-    /* 36 ticks; longer every 30 degrees */
+    /* Fixed dial, like the concept: N at the top, 36 ticks, longer every 30 deg.
+     * Only the spindles turn. */
     lv_draw_line_dsc_t ln;
     lv_draw_line_dsc_init(&ln);
     ln.color = lv_color_hex(C_GLOW);
@@ -167,16 +168,16 @@ static void draw_cb(lv_event_t *e)
     ln.width = 4;
     ln.round_start = ln.round_end = 1;
     for (int i = 0; i < 36; i++) {
-        float a = north + i * 10;
+        float a = i * 10;
         pt(&ln.p1, a, (i % 3 == 0) ? 254 : 269);
         pt(&ln.p2, a, 284);
         lv_draw_line(L, &ln);
     }
 
-    letter(L, "N", &font_cinzel_bold_46, C_GLOW,  north,       216);
-    letter(L, "E", &font_cinzel_30,      C_MUTED, north + 90,  220);
-    letter(L, "S", &font_cinzel_30,      C_MUTED, north + 180, 220);
-    letter(L, "W", &font_cinzel_30,      C_MUTED, north + 270, 220);
+    letter(L, "N", &font_cinzel_bold_46, C_GLOW,  0,   216);
+    letter(L, "E", &font_cinzel_30,      C_MUTED, 90,  220);
+    letter(L, "S", &font_cinzel_30,      C_MUTED, 180, 220);
+    letter(L, "W", &font_cinzel_30,      C_MUTED, 270, 220);
 
     /* diamond on the ring marking the station direction */
     lv_point_precise_t a, b, c, d;
