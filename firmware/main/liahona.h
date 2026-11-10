@@ -24,7 +24,8 @@ typedef struct {
     /* GPS (PA1010D) */
     test_result_t gps;
     bool     gps_fix;
-    int      gps_sats;
+    int      gps_sats;                 /* used in the fix */
+    int      gps_in_view;              /* visible in the sky */
     double   gps_lat, gps_lon;
     char     gps_time[12];             /* hh:mm:ss UTC */
 

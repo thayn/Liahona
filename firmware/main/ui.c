@@ -186,7 +186,7 @@ static void refresh_cb(lv_timer_t *t)
 
     if (s.gps != TEST_PASS) snprintf(buf, sizeof(buf), "%s", res_word(s.gps));
     else if (s.gps_fix) snprintf(buf, sizeof(buf), "%.5f %.5f  %d sats", s.gps_lat, s.gps_lon, s.gps_sats);
-    else snprintf(buf, sizeof(buf), "no fix yet (%s UTC)", s.gps_time[0] ? s.gps_time : "--");
+    else snprintf(buf, sizeof(buf), "no fix, %d in view (%s)", s.gps_in_view, s.gps_time[0] ? s.gps_time : "--");
     set_row(R_GPS, s.gps, buf);
 
     if (s.nfc != TEST_PASS) snprintf(buf, sizeof(buf), "%s", res_word(s.nfc));

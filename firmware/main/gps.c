@@ -60,6 +60,16 @@ static void parse_line(char *line)
             g_state.gps_lon = nmea_deg(f[5], f[6]);
         }
         STATE_UNLOCK();
+    } else if (strncmp(type, "GSV", 3) == 0 && n > 3) {
+        /* satellites in view, per constellation (GP, GL, GA, BD/GB) */
+        static const char *talk[] = { "GP", "GL", "GA", "BD", "GB" };
+        static int seen[5];
+        for (int i = 0; i < 5; i++) {
+            if (strncmp(f[0] + 1, talk[i], 2) == 0) seen[i] = atoi(f[3]);
+        }
+        STATE_LOCK();
+        g_state.gps_in_view = seen[0] + seen[1] + seen[2] + seen[3] + seen[4];
+        STATE_UNLOCK();
     } else if (strncmp(type, "GGA", 3) == 0 && n > 7) {
         STATE_LOCK();
         g_state.gps_sats = atoi(f[7]);
