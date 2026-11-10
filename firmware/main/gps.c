@@ -83,8 +83,15 @@ static void parse_line(char *line)
         for (int i = 0; i < 5; i++) {
             if (strncmp(f[0] + 1, talk[i], 2) == 0) seen[i] = atoi(f[3]);
         }
+        /* each satellite block: PRN, elevation, azimuth, SNR (dB-Hz, empty = not heard) */
+        int heard = 0, best = 0;
+        for (int k = 7; k < n; k += 4) {
+            if (f[k][0]) { int snr = atoi(f[k]); heard++; if (snr > best) best = snr; }
+        }
         STATE_LOCK();
         g_state.gps_in_view = seen[0] + seen[1] + seen[2] + seen[3] + seen[4];
+        if (best > g_state.gps_best_snr) g_state.gps_best_snr = best;
+        g_state.gps_heard += heard;
         STATE_UNLOCK();
     } else if (strncmp(type, "GGA", 3) == 0 && n > 7) {
         STATE_LOCK();
@@ -131,8 +138,12 @@ static void gps_task(void *arg)
             if (now - last_log > 5000000) {
                 last_log = now;
                 STATE_LOCK();
-                ESP_LOGI(TAG, "fix=%d  sats used=%d  in view=%d  time=%s",
-                         g_state.gps_fix, g_state.gps_sats, g_state.gps_in_view, g_state.gps_time);
+                ESP_LOGI(TAG, "fix=%d  sats used=%d  in view=%d  heard=%d  best SNR=%d dB  time=%s%s",
+                         g_state.gps_fix, g_state.gps_sats, g_state.gps_in_view,
+                         g_state.gps_heard, g_state.gps_best_snr, g_state.gps_time,
+                         g_state.quiet_mode ? "  [SCREEN OFF]" : "");
+                g_state.gps_heard = 0;        /* per 5-second window */
+                g_state.gps_best_snr = 0;
                 STATE_UNLOCK();
             }
             /* Padding only = nothing new; wait a bit before reading again. */
@@ -153,7 +164,7 @@ void gps_start(i2c_master_bus_handle_t bus)
     i2c_device_config_t cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address  = I2C_ADDR_GPS,
-        .scl_speed_hz    = 400000,
+        .scl_speed_hz    = 100000,     /* slower = OK over long test leads */
     };
     if (i2c_master_bus_add_device(s_bus, &cfg, &s_gps) != ESP_OK) {
         g_state.gps = TEST_FAIL;

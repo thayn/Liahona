@@ -26,6 +26,9 @@ typedef struct {
     bool     gps_fix;
     int      gps_sats;                 /* used in the fix */
     int      gps_in_view;              /* visible in the sky */
+    int      gps_heard;                /* with a signal, last 5 s */
+    int      gps_best_snr;             /* strongest signal, last 5 s (dB-Hz) */
+    bool     quiet_mode;               /* screen off for the GPS noise test */
     double   gps_lat, gps_lon;
     char     gps_time[12];             /* hh:mm:ss UTC */
 

@@ -85,6 +85,23 @@ static void any_touch_cb(lv_event_t *e)
 static void go_test_cb(lv_event_t *e)    { lv_screen_load_anim(scr_test, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false); }
 static void go_compass_cb(lv_event_t *e) { lv_screen_load_anim(scr_compass, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false); }
 static void beep_cb(lv_event_t *e)       { audio_test_beep(); }
+
+/* GPS noise test: screen dark for 60 s, GPS keeps listening (watch the log). */
+static lv_timer_t *s_quiet_timer;
+static void quiet_end(lv_timer_t *t)
+{
+    bsp_display_backlight_on();
+    STATE_LOCK(); g_state.quiet_mode = false; STATE_UNLOCK();
+    lv_timer_delete(t);
+    s_quiet_timer = NULL;
+}
+static void quiet_cb(lv_event_t *e)
+{
+    if (s_quiet_timer) return;
+    STATE_LOCK(); g_state.quiet_mode = true; STATE_UNLOCK();
+    bsp_display_backlight_off();
+    s_quiet_timer = lv_timer_create(quiet_end, 60000, NULL);
+}
 static void mark_cb(lv_event_t *e)
 {
     /* Bench demo: remember where you are standing as "the station",
@@ -137,6 +154,10 @@ static void build_test(void)
         lv_label_set_long_mode(row_val[i], LV_LABEL_LONG_CLIP);
         lv_obj_set_pos(row_val[i], x_val, y);
     }
+
+    /* tap the GPS row = screen-off noise test */
+    lv_obj_add_flag(row_val[R_GPS], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(row_val[R_GPS], quiet_cb, LV_EVENT_CLICKED, NULL);
 
     static const char *names[4] = { "Beep", "LEDs", "Mark", "Back" };
     lv_event_cb_t cbs[4] = { beep_cb, leds_cb, mark_cb, go_compass_cb };
