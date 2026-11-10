@@ -1,0 +1,9 @@
+## Downloaded automatically from the Espressif component registry on first build.
+dependencies:
+  idf: ">=5.5"
+  # Board support for the ESP32-P4-WIFI6-Touch-LCD-3.4C / 4C (display, touch, audio, SD, I2C)
+  waveshare/esp32_p4_wifi6_touch_lcd_xc: "^3.0.1"
+  # Pinned: newer LVGL headers caused deprecation build errors with these examples
+  lvgl/lvgl: "~9.3.0"
+  # WS2812-style LED strip driver (band LEDs)
+  espressif/led_strip: "^3.0.0"
