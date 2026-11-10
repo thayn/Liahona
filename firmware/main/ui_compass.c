@@ -26,6 +26,12 @@
 #define CY  360
 #define DEG (float)(M_PI / 180.0)
 
+/* The background is written straight into an image buffer. On this board the
+ * image path shows red and blue swapped compared with LVGL-drawn colours
+ * (seen on hardware 2026-11-09: brown came out navy), so swap them here.
+ * Set to 0 if the background ever turns blue again. */
+#define BG_SWAP_RB 1
+
 /* concept palette */
 #define C_GLOW      0xF2C766
 #define C_CREAM     0xEDE3CC
@@ -92,6 +98,9 @@ static void build_background(void)
             int R = (int)clampf(c.r + d * 8.0f, 0, 255);
             int G = (int)clampf(c.g + d * 4.0f, 0, 255);
             int B = (int)clampf(c.b + d * 8.0f, 0, 255);
+#if BG_SWAP_RB
+            int tmp = R; R = B; B = tmp;
+#endif
             row[x] = (uint16_t)(((R & 0xF8) << 8) | ((G & 0xFC) << 3) | (B >> 3));
         }
     }
@@ -268,23 +277,23 @@ void ui_compass_build(lv_obj_t *scr)
         lv_obj_set_pos(img, 0, 0);
     }
 
-    s_overlay = lv_obj_create(scr);
-    lv_obj_remove_style_all(s_overlay);
-    lv_obj_set_size(s_overlay, W, W);
-    lv_obj_set_pos(s_overlay, 0, 0);
-    lv_obj_remove_flag(s_overlay, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_event_cb(s_overlay, draw_cb, LV_EVENT_DRAW_MAIN_END, NULL);
-
     s_lbl_big = lv_label_create(scr);
     lv_obj_set_style_text_font(s_lbl_big, &font_cinzel_56, 0);
     lv_obj_set_style_text_color(s_lbl_big, lv_color_hex(C_CREAM), 0);
     lv_label_set_text(s_lbl_big, "");
-    lv_obj_align(s_lbl_big, LV_ALIGN_CENTER, 0, 128);
+    lv_obj_align(s_lbl_big, LV_ALIGN_CENTER, 0, 112);
 
     s_lbl_small = lv_label_create(scr);
     lv_obj_set_style_text_font(s_lbl_small, &font_inter_22, 0);
     lv_obj_set_style_text_color(s_lbl_small, lv_color_hex(C_MUTED), 0);
     lv_obj_set_style_text_letter_space(s_lbl_small, 5, 0);
     lv_label_set_text(s_lbl_small, "");
-    lv_obj_align(s_lbl_small, LV_ALIGN_CENTER, 0, 182);
+    lv_obj_align(s_lbl_small, LV_ALIGN_CENTER, 0, 166);
+
+    s_overlay = lv_obj_create(scr);
+    lv_obj_remove_style_all(s_overlay);
+    lv_obj_set_size(s_overlay, W, W);
+    lv_obj_set_pos(s_overlay, 0, 0);
+    lv_obj_remove_flag(s_overlay, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(s_overlay, draw_cb, LV_EVENT_DRAW_MAIN_END, NULL);
 }

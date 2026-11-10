@@ -1,5 +1,5 @@
 # Liahona ball firmware (ESP32-P4, Waveshare ESP32-P4-WIFI6-Touch-LCD-4C)
 cmake_minimum_required(VERSION 3.16)
-set(PROJECT_VER "0.2.0")
+set(PROJECT_VER "0.2.1")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(liahona_fw)
