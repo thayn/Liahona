@@ -1,6 +1,23 @@
-# Liahona Manager — Architecture (draft v0.1)
+# Liahona Manager — Architecture (v0.3)
 
-Status: planning. Nothing built yet. Written 2026-11-08 to capture the plan before the firmware work starts.
+Status: **built** (2026-11-10) in the `thayn/Liahona-Manager` repo: cloud deploy, accounts and roles, sign-up form, camp laptop sync. Setup steps: `docs/cloud-setup.md` in that repo. Not built yet: the media converter, LoRa field dashboard, ball loading over Wi-Fi.
+
+## Decisions made 2026-11-10
+- **Hosting: AWS serverless.** CloudFront → S3 (pages) and API Gateway HTTP API → one Lambda running the same Node code as the laptop. App Runner was ruled out (closed to new customers since April 30, 2026). Near-zero cost when idle.
+- **Data:** the whole manager is one JSON "workspace" document in a versioned S3 bucket. It's saved only if nobody else saved in between (S3 If-Match), and retried if they did. Every version is kept 400 days. Media lives in a second bucket, uploaded straight from the browser with signed links.
+- **Accounts:** Cognito (hosted sign-in, invites by email, optional 2-step). Roles are Cognito groups:
+  - **Admin:** everything.
+  - **Planner:** journeys, places, media, teams, cards. No private details.
+  - **Registrar:** sign-ups and full profiles.
+  - **Leader:** read-only; private details for their own team only, matched by the email on their People entry.
+- **Public page:** only `/register`, the sign-up form. It includes parent permission with a typed signature, replacing the separate Google permission form. Submissions wait for a Registrar to approve them into People.
+- **Theme:** kept as settings (event name, tagline, dates, colour), because the camp theme isn't decided. The device stays a Liahona.
+- **Domain:** none for now; the CloudFront address is used. A domain can be added later without code changes.
+- **Offline camp copy is fully editable:**
+  - **Download for camp** moves the main copy to the laptop and locks the cloud (read-only).
+  - **Upload after camp** sends it back. Sign-ups that arrived in between are kept.
+  - An Admin can force-unlock if the laptop is lost.
+  - On the laptop, whoever sits at it is Admin. Phones and iPads on its Wi-Fi sign in with email plus a per-role code.
 
 ## Goal
 
@@ -112,21 +129,22 @@ LoRa is slow, around 1–5 kbps, so **media never goes over LoRa**. LoRa carries
 
 ---
 
-## 5. Hosting options (decision pending)
+## 5. Hosting options (decided 2026-11-10: AWS serverless, see the top)
 
 | Option | What | Pros | Cons |
 |---|---|---|---|
 | **A. AWS serverless** | Cognito, S3, API Gateway + Lambda, DynamoDB, ffmpeg Lambda/Fargate, CloudFront | Pay per use, near $0 when idle, scales | More moving parts; the local version is a separate build target |
 | **B. One small server** | One VPS or Lightsail running the app + Postgres + an ffmpeg worker; media in S3 | Simplest; **the same app runs on the laptop** for offline | A few dollars a month; you look after one machine |
 
-Leaning: **Option B**, because one codebase can run both in the cloud and on the laptop, which is the hardest requirement. S3 is still used for media either way.
+Chosen: **AWS serverless**, with the same codebase also running on the laptop (the storage layer switches between local files and the S3 document). That kept the main reason for Option B.
 
 ---
 
 ## 6. Decisions still to make
 
-- [ ] Who needs accounts, and which roles.
-- [ ] Hosting: A (serverless) or B (one server).
+- [x] Who needs accounts, and which roles: Admin, Planner, Registrar, Leader.
+- [x] Hosting: AWS serverless.
+- [ ] Sign-up form questions: match Thayn's old Google Form (PDF coming) and add the new profile fields.
 - [ ] Ball loading: from the cloud directly, through the laptop, or both.
 - [ ] Media budget per journey: minutes of video, number of clips, SD card size (16–32 GB planned).
 - [ ] Audio format the firmware will play (follows the firmware audio work).
