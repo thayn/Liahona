@@ -1,11 +1,10 @@
 """
 Covenant Path participant medallion (single-colour print, painted after).
 
-Two parts:
-  medallion  - the badge. Face up on the bed; NFC pocket opens on the back (bed side).
-  cap        - press-fit disc that closes the pocket over a 1" (25 mm) NTAG215 sticker.
+One piece. The NFC tag is sealed inside: the print pauses at the top of a hidden slot,
+you drop the tag in, and the printer closes it over.
 
-Run:  python medallion.py   ->  out/medallion.stl, out/medallion_cap.stl, .step, preview PNGs
+Run:  python medallion.py   ->  out/medallion.stl, out/medallion.step (and prints the pause height)
 All sizes in mm. Change the settings block only.
 """
 from pathlib import Path
@@ -28,11 +27,13 @@ S = dict(
     ART_GAP=0.8,           # clearance between the inner line and the artwork
     # lanyard bail above the top point
     BAIL_R=6.0, BAIL_Y=31.5, HOLE_D=5.2,
-    # NFC pocket (back, open on the bed side) and cap
-    TAG_D=25.4,            # 1" NTAG215 sticker
-    POCKET_D=28.4, POCKET_DEPTH=1.8, POCKET_Y=-1.0,
-    CAP_D=28.2, CAP_T=1.6, CAP_STAR=0.6,
-    NOTCH_R=1.5,           # pry notch at the pocket edge
+    # NFC tag slot, sealed inside (print pauses so the tag can be dropped in)
+    TAG_D=25.4, TAG_T=1.0,     # measure your tag; the slot is sized from these
+    SLOT_CLEAR_D=0.8,          # slot diameter = tag + this
+    SLOT_CLEAR_T=0.2,          # slot depth = tag + this (then rounded up to whole layers)
+    SLOT_FLOOR=1.0,            # plastic under the tag (back side)
+    SLOT_Y=-1.0,
+    LAYER=0.2, FIRST_LAYER=0.2,
     # back text, engraved into the bed side
     BACK_TEXT_H=3.6, BACK_ENGRAVE=0.6,
     TOP_TEXT="COVENANT", BOTTOM_TEXT="PATH",
@@ -210,11 +211,9 @@ def build():
     raised = border + art + words
     body += Pos(0, 0, T) * extrude(raised, R, dir=UP)
 
-    # NFC pocket on the back (bed side) + pry notch
-    py = S["POCKET_Y"]
-    pocket = Pos(0, py) * Circle(S["POCKET_D"] / 2)
-    pocket += Pos(0, py - S["POCKET_D"] / 2 + 0.4) * Circle(S["NOTCH_R"])
-    body -= extrude(pocket, S["POCKET_DEPTH"], dir=UP)
+    # sealed NFC slot
+    z0, z1 = slot_z()
+    body -= Pos(0, S["SLOT_Y"], z0) * extrude(Circle((S["TAG_D"] + S["SLOT_CLEAR_D"]) / 2), z1 - z0, dir=UP)
 
     # back text, mirrored so it reads correctly from the back
     bt = (text_fit(S["BACK_TOP"], S["BACK_TEXT_H"], 18.0, max_w=24)
@@ -222,21 +221,32 @@ def build():
     bt = mirror(bt, about=Plane.YZ)
     body -= extrude(bt, S["BACK_ENGRAVE"], dir=UP)
 
-    # cap: disc with a raised compass star (star faces out, on the back)
-    cap = extrude(Circle(S["CAP_D"] / 2), S["CAP_T"], dir=UP)
-    cap += Pos(0, 0, S["CAP_T"]) * extrude(star(0, 0, 10.5, 6.5) + (Circle(9.8) - Circle(9.0)),
-                                            S["CAP_STAR"], dir=UP)
-    return body, cap, (hexf, border, art, words, field)
+    return body, (hexf, border, art, words, field)
+
+
+def layer_top(z):
+    """Round z up to the top of a whole print layer."""
+    L, f = S["LAYER"], S["FIRST_LAYER"]
+    n = math.ceil(round((z - f) / L, 6))
+    return round(f + max(n, 0) * L, 3)
+
+
+def slot_z():
+    z0 = layer_top(S["SLOT_FLOOR"])
+    z1 = layer_top(z0 + S["TAG_T"] + S["SLOT_CLEAR_T"])
+    return z0, z1
 
 
 if __name__ == "__main__":
     out = HERE / "out"
     out.mkdir(exist_ok=True)
-    body, cap, _ = build()
+    body, _ = build()
     export_stl(body, str(out / "medallion.stl"), tolerance=0.02, angular_tolerance=0.2)
-    export_stl(cap, str(out / "medallion_cap.stl"), tolerance=0.02, angular_tolerance=0.2)
-    export_step(Compound([body, Pos(40, 0, 0) * cap]), str(out / "medallion.step"))
+    export_step(body, str(out / "medallion.step"))
     bb = body.bounding_box()
+    z0, z1 = slot_z()
     print("medallion bbox", round(bb.size.X, 2), round(bb.size.Y, 2), round(bb.size.Z, 2),
           "volume cm3", round(body.volume / 1000, 2), "solids", len(body.solids()))
-    print("cap volume cm3", round(cap.volume / 1000, 2), "solids", len(cap.solids()))
+    print(f"tag slot: {S['TAG_D'] + S['SLOT_CLEAR_D']:.1f} mm wide, z {z0:.2f} to {z1:.2f} mm")
+    print(f"PAUSE: after the layer that ends at z = {z1:.2f} mm "
+          f"(i.e. before the layer at {z1 + S['LAYER']:.2f} mm)")
