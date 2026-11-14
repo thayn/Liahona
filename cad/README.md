@@ -52,3 +52,11 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 - SS07 lever travel (plunger length). PN532, Core1262 and PowerBoost holes.
 - LoRa antenna: suggest the shoulder cavity at ~160°, opposite the GPS.
 - A charging stand, since the port is at the bottom.
+
+## Participant medallion (`medallion.py`)
+Covenant Path badge that holds each participant's 1" NTAG215 sticker. Single colour, painted after printing.
+- `python medallion.py` writes `out/medallion.stl`, `out/medallion_cap.stl` and `out/medallion.step`. `python medallion_preview.py` draws the paint map.
+- 48 × 65 × 4.8 mm, with a 5.2 mm lanyard hole. The front art is raised 0.8 mm: base-coat dark, then dry-brush the raised parts light.
+- Print face up with no supports. The NFC pocket (28.4 mm, 1.8 mm deep) opens on the bed side. Stick the tag to the pocket ceiling and press in the 1.6 mm star cap. Use the notch to pry it out.
+- Use non-metallic paint over the tag area, because metal-flake paint can block NFC.
+- Font: Oswald Bold (`fonts/`, SIL Open Font License).
