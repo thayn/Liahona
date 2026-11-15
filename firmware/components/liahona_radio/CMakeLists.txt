@@ -3,5 +3,5 @@
 idf_component_register(
     SRCS "sx1262.c" "sx1262_hal_esp.c" "liahona_proto.c"
     INCLUDE_DIRS "."
-    REQUIRES esp_driver_gpio esp_driver_spi
+    REQUIRES esp_driver_gpio esp_driver_spi esp_timer
 )
