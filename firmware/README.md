@@ -1,4 +1,4 @@
-# Liahona ball firmware — v0.2.0 (milestone 1)
+# Liahona ball firmware — v0.3.0 (milestone 2: LoRa link)
 
 Foundation + bench self-test for the Waveshare **ESP32-P4-WIFI6-Touch-LCD-4C** (4", 720×720).
 Built and checked with **ESP-IDF v6.1** (target `esp32p4`). It compiles cleanly, but it has not run on hardware yet.
@@ -22,7 +22,7 @@ Built and checked with **ESP-IDF v6.1** (target `esp32p4`). It compiles cleanly,
 | Compass | LIS3MDL found. The numbers change as you turn it. |
 | GPS | PA1010D is sending data. It shows a position once it has a fix; try outside or by a window. |
 | NFC | PN532 found. Hold a tag near it and its ID appears. |
-| LoRa | SX1262 answers. It does **not** transmit yet. |
+| LoRa | SX1262 answers, then shows `#<ball> listening, TX off`. Once packets arrive: counts and the last signal strength. A leader message or command shows here for 10 s. **Tap the row** to send a status report (needs TX enabled). |
 | Lid switch | Press and release the switch once. |
 | LEDs | Colours cycle red, green, blue, white, then a chase. **Check by eye.** The LEDs button switches between test, off and gold glow. |
 | Battery | Shows the voltage if the 100k/100k divider is wired, otherwise "not wired". |
@@ -42,17 +42,36 @@ The 4" 720×720 screen is already selected in `sdkconfig.defaults`. If you ever 
 
 ## Where things live
 - `main/board_pins.h` holds **all pins and hardware settings**. Change wiring here only.
-  - **Set `LED_COUNT` to your real number of LEDs.**
+  - **Set `LED_COUNT` to your real number of LEDs** (78 for now; trim after the final fit).
 - `main/ui_compass.c`: compass screen. `main/ui.c`: self-test screen.
 - `main/fonts/`: Cinzel and Inter, converted for LVGL (SIL Open Font License).
 - `main/sensors.c`: I2C scan and compass.
 - `main/gps.c`, `main/nfc.c`, `main/lora.c`, `main/leds.c`: one file per part.
+- `components/liahona_radio/`: SX1262 driver and packet format, shared with the base station.
 - `main/inputs.c`: lid switch and battery.
 - `main/storage.c`: SD card.
 - `main/audio_test.c`: speaker.
 - `partitions.csv`: two 8 MB app slots (for OTA) plus a 4 MB storage partition.
 
+## LoRa link (v0.3)
+The ball talks to the base station (`../base_station`) on 915 MHz (settings in `components/liahona_radio/radio_config.h`, the same file the base station uses).
+
+**Wiring added for v0.3** (Core1262 module):
+- A short wire on the module itself: **DIO2 → TXEN**. The radio then switches its own antenna to transmit.
+- **RXEN → header pin 13** (GPIO20). Check the board's silkscreen says 20 next to that pin.
+
+**Turning transmit on:** `LORA_TX_ENABLED` in `board_pins.h` is **0**. Set it to 1 only when the **Core1262-HF** is fitted **and** its 915 MHz antenna is plugged in. Never with the LF (410–510 MHz) module.
+
+**Ball number:** put a file `liahona/ball_id.txt` on the SD card containing just the number (1–254). Without it the ball is #1.
+
+What the ball does with TX on:
+- Sends a status report (position, battery, lid, step, heading) every 30 s, and straight away when pinged or when you tap the LoRa row.
+- ACKs leader messages and commands (unlock, skip, dim, restore, stage), so the base station knows they arrived.
+- `lora_send_checkin()` is ready for NFC station check-ins (the base ACKs those).
+
+Host tests for the radio code (no hardware): `make -C components/liahona_radio/test_host`.
+
 ## Known limits (next milestones)
 - **Compass:** uncalibrated and not tilt-compensated. Calibration is coming. Set `MAG_DECLINATION_DEG` in `board_pins.h` for your camp, so GPS bearings and the compass agree.
-- **LoRa:** presence check only. Messaging comes with the base station firmware. Don't transmit without an antenna attached.
+- **LoRa:** working protocol, not yet tested over the air (it needs the Core1262-HF). Leader messages and commands are stored but the journey screens don't act on them yet.
 - **Not in this version yet:** video and audio playback from the SD card, the journey engine (manifest, unlock rules), Wi-Fi via the ESP32-C6, and OTA updates. The partitions are already set up for OTA.

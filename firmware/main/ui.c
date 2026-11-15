@@ -13,6 +13,8 @@
 #include "esp_log.h"
 #include "bsp/esp-bsp.h"
 #include "liahona.h"
+#include "esp_timer.h"
+#include "liahona_proto.h"
 #include "ui_fonts.h"
 
 #define SCR_W 720
@@ -117,6 +119,12 @@ static void mark_cb(lv_event_t *e)
     if (fix) go_compass_cb(e);
     else audio_test_beep();
 }
+static void lora_tap_cb(lv_event_t *e)
+{
+    lora_send_status_now();
+    audio_test_beep();
+}
+
 static void leds_cb(lv_event_t *e)
 {
     /* Each tap: test cycle -> off -> gold glow -> test cycle ... */
@@ -154,6 +162,10 @@ static void build_test(void)
         lv_label_set_long_mode(row_val[i], LV_LABEL_LONG_CLIP);
         lv_obj_set_pos(row_val[i], x_val, y);
     }
+
+    /* tap the LoRa row = send a status report now (only if TX is enabled) */
+    lv_obj_add_flag(row_val[R_LORA], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(row_val[R_LORA], lora_tap_cb, LV_EVENT_CLICKED, NULL);
 
     /* tap the GPS row = screen-off noise test */
     lv_obj_add_flag(row_val[R_GPS], LV_OBJ_FLAG_CLICKABLE);
@@ -215,8 +227,31 @@ static void refresh_cb(lv_timer_t *t)
     else snprintf(buf, sizeof(buf), "PASS - hold a tag near");
     set_row(R_NFC, s.nfc, buf);
 
+    /* LoRa: found -> listening -> what it heard. Tap the row to send a status report. */
     if (s.lora == TEST_PENDING) snprintf(buf, sizeof(buf), "...");
-    else snprintf(buf, sizeof(buf), "%s  (sync %02X %02X)", res_word(s.lora), s.lora_sync[0], s.lora_sync[1]);
+    else if (s.lora != TEST_PASS) snprintf(buf, sizeof(buf), "%s  (sync %02X %02X)", res_word(s.lora), s.lora_sync[0], s.lora_sync[1]);
+    else if (!s.lora_ready) snprintf(buf, sizeof(buf), "found, setup err %d", s.lora_err);
+    else if (s.lora_rx_count == 0) snprintf(buf, sizeof(buf), "#%u listening, TX %s%s", s.ball_id,
+                                            s.lora_tx_enabled ? "on" : "off", s.lora_tcxo ? "" : " (xtal)");
+    else snprintf(buf, sizeof(buf), "#%u rx %lu tx %lu  %d dBm", s.ball_id, (unsigned long)s.lora_rx_count,
+                  (unsigned long)s.lora_tx_count, s.lora_last_rssi);
+    {   /* show a new leader message / command on the row for 10 s */
+        static uint32_t seen_msg, seen_cmd;
+        static int64_t show_until;
+        static char note[64];
+        int64_t now = esp_timer_get_time() / 1000;
+        if (s.leader_msg_count != seen_msg) {
+            seen_msg = s.leader_msg_count;
+            snprintf(note, sizeof(note), "msg: %s", s.leader_msg);
+            show_until = now + 10000;
+        }
+        if (s.leader_cmd_count != seen_cmd) {
+            seen_cmd = s.leader_cmd_count;
+            snprintf(note, sizeof(note), "cmd: %s %u", lp_cmd_name(s.leader_cmd), s.leader_cmd_arg);
+            show_until = now + 10000;
+        }
+        if (now < show_until) strlcpy(buf, note, sizeof(buf));
+    }
     set_row(R_LORA, s.lora, buf);
 
     snprintf(buf, sizeof(buf), "%s  (%d changes)", s.lid_closed ? "CLOSED" : "OPEN", s.lid_changes);
