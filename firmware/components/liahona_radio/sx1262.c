@@ -113,7 +113,7 @@ static int hw_reset(sx1262_t *r)
     sx_hal_delay_ms(2);
     sx_hal_reset_pin(r, 1);
     sx_hal_delay_ms(10);
-    for (int i = 0; i < 100 && sx_hal_busy(r); i++) sx_hal_delay_ms(1);
+    for (int i = 0; i < 20 && sx_hal_busy(r); i++) sx_hal_delay_ms(5);   /* up to ~100 ms */
     return sx_hal_busy(r) ? SX_ERR_BUSY : SX_OK;
 }
 

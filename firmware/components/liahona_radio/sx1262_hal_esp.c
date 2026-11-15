@@ -8,6 +8,8 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "esp_rom_sys.h"
 #include "sx1262.h"
 
 static const char *TAG = "sx1262";
@@ -66,11 +68,22 @@ int sx_hal_init(sx1262_t *r)
 
 bool sx_hal_busy(sx1262_t *r) { return gpio_get_level(r->cfg.busy) != 0; }
 
+/* Wait for BUSY to drop, by the clock (not by RTOS ticks, which may be 10 ms long).
+ * Calibration with a TCXO can keep BUSY high for several milliseconds. */
+static bool wait_not_busy(sx1262_t *r, uint32_t max_ms)
+{
+    int64_t deadline = esp_timer_get_time() + (int64_t)max_ms * 1000;
+    while (sx_hal_busy(r)) {
+        if (esp_timer_get_time() > deadline) return false;
+        esp_rom_delay_us(50);
+    }
+    return true;
+}
+
 int sx_hal_xfer(sx1262_t *r, const uint8_t *tx, uint8_t *rx, size_t n)
 {
     hal_t *h = (hal_t *)r->hal;
-    for (int t = 0; t < 100 && sx_hal_busy(r); t++) vTaskDelay(pdMS_TO_TICKS(1));
-    if (sx_hal_busy(r)) return SX_ERR_BUSY;
+    if (!wait_not_busy(r, 200)) return SX_ERR_BUSY;
     spi_transaction_t t = { .length = n * 8, .tx_buffer = tx, .rx_buffer = rx };
     return spi_device_polling_transmit(h->spi, &t) == ESP_OK ? SX_OK : SX_ERR_HAL;
 }
@@ -86,7 +99,14 @@ bool sx_hal_wait_dio1(sx1262_t *r, uint32_t ms)
 {
     hal_t *h = (hal_t *)r->hal;
     if (gpio_get_level(r->cfg.dio1)) return true;          /* already high */
-    return xSemaphoreTake(h->dio1_sem, pdMS_TO_TICKS(ms)) == pdTRUE;
+    TickType_t t = pdMS_TO_TICKS(ms);
+    return xSemaphoreTake(h->dio1_sem, t ? t : 1) == pdTRUE;
 }
 
-void sx_hal_delay_ms(uint32_t ms) { vTaskDelay(pdMS_TO_TICKS(ms ? ms : 1)); }
+void sx_hal_delay_ms(uint32_t ms)
+{
+    /* Short waits by the clock; longer ones give the CPU back (rounded up to a tick). */
+    if (ms < 20) { esp_rom_delay_us(ms * 1000); return; }
+    TickType_t t = pdMS_TO_TICKS(ms);
+    vTaskDelay(t ? t + 1 : 1);
+}
