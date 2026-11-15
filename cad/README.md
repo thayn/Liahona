@@ -52,3 +52,12 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 - SS07 lever travel (plunger length). PN532, Core1262 and PowerBoost holes.
 - LoRa antenna: suggest the shoulder cavity at ~160°, opposite the GPS.
 - A charging stand, since the port is at the bottom.
+
+## Participant medallion (`medallion.py`)
+A one-piece Covenant Path badge with each participant's NFC tag sealed inside. Single colour, painted after printing.
+- `python medallion.py` writes `out/medallion.stl` and `.step`, and prints the pause height. `python medallion_preview.py` draws the paint map and a side section.
+- 48 × 65 × 4.8 mm, with a 5.2 mm lanyard hole. The front art is raised 0.8 mm: base-coat dark, then dry-brush the raised parts light. MAKE PROMISES / KEEP PROMISES is engraved on the back.
+- **Tag slot:** 26.2 mm wide, from z 1.0 to 2.2 mm, for a 25.4 × 1.0 mm tag. Set `TAG_D` and `TAG_T` to your measured tag. The slot is rounded up to whole 0.2 mm layers.
+- **Print:** face up, no supports, 0.2 mm layers. In Bambu Studio, add a pause on the first layer above the slot (it starts at 2.2 mm and shows 2.40 in the layer slider). At the pause, drop the tag in flat and resume.
+- Use non-metallic paint over the tag area, because metal-flake paint can block NFC.
+- Font: Oswald Bold (`fonts/`, SIL Open Font License).

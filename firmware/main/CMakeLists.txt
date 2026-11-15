@@ -6,4 +6,5 @@ idf_component_register(
     INCLUDE_DIRS "."
     REQUIRES esp_driver_gpio esp_driver_i2c esp_driver_spi esp_adc
              esp_driver_rmt fatfs app_update nvs_flash
+             esp_timer liahona_radio
 )

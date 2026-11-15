@@ -44,9 +44,24 @@ typedef struct {
     bool     nfc_tag_present;
 
     /* LoRa (SX1262) */
-    test_result_t lora;
+    test_result_t lora;                /* PASS = chip found on SPI */
     uint8_t  lora_sync[2];
     uint8_t  lora_status;
+    bool     lora_ready;               /* fully set up and listening */
+    bool     lora_tx_enabled;
+    bool     lora_tcxo;
+    int      lora_err;                 /* last driver error, 0 = none */
+    uint8_t  ball_id;
+    uint32_t lora_rx_count, lora_tx_count;
+    int16_t  lora_last_rssi;           /* dBm of the last packet heard */
+    float    lora_last_snr;
+    /* from the leader (via the base station) */
+    char     leader_msg[49];           /* last message text */
+    uint32_t leader_msg_count;         /* bumps on each new message */
+    uint8_t  leader_cmd;               /* last lp_cmd_t, 0 = none */
+    uint8_t  leader_cmd_arg;
+    uint32_t leader_cmd_count;
+    uint8_t  stage;                    /* journey step (set by the journey engine) */
 
     /* Lid switch */
     bool     lid_closed;
@@ -89,6 +104,8 @@ void sensors_start(i2c_master_bus_handle_t bus);   /* I2C scan + compass task */
 void gps_start(i2c_master_bus_handle_t bus);
 void nfc_start(i2c_master_bus_handle_t bus);
 void lora_start(void);
+void lora_send_status_now(void);                  /* queue a status report (if TX enabled) */
+void lora_send_checkin(const uint8_t *uid, int uid_len, uint8_t station);
 void leds_start(void);
 void leds_set_mode(int mode);                     /* 0 idle glow, 1 test cycle, 2 off */
 void inputs_start(void);                          /* lid switch + battery */

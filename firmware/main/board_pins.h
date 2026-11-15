@@ -22,11 +22,27 @@
 #define LORA_PIN_RESET      GPIO_NUM_4    /* header pin 18 */
 #define LORA_PIN_BUSY       GPIO_NUM_5    /* header pin 16 */
 #define LORA_PIN_DIO1       GPIO_NUM_22   /* header pin 12 */
+/* Antenna switch on the Core1262: solder a short wire from the module's DIO2 pad to
+ * its TXEN pad (the radio drives TX itself), and RXEN to this GPIO (high = receive). */
+#define LORA_PIN_RXEN       GPIO_NUM_20   /* header pin 13 */
+#define LORA_TCXO_V         1.8f          /* tried first; falls back to crystal */
 
-/* ---- Band LEDs (WS2812 / NeoPixel), via 74AHCT125 + 330 ohm ---- */
+/* Transmitting without an antenna can damage the radio. Keep this 0 until the
+ * Core1262-HF (850-930 MHz) is fitted AND its 915 MHz antenna is plugged in.
+ * Receiving is always safe. Never set it to 1 with the LF (410-510 MHz) module. */
+#define LORA_TX_ENABLED     0
+#define LORA_TX_POWER_DBM   14            /* up to 22; 14 saves battery */
+#define LORA_STATUS_EVERY_S 30            /* status report interval (plus a little jitter) */
+
+/* Each ball needs its own number (1-254). Put it in ball_id.txt on the SD card
+ * (just the number, e.g. "3"). Without the file the ball uses BALL_ID_DEFAULT. */
+#define BALL_ID_DEFAULT     1
+
+/* ---- Band LEDs (WS2812B / NeoPixel), 430 ohm in the data line ----
+ * (74AHCT125 level shifter planned; 3.3V data works on the bench) */
 #define LED_PIN_DATA        GPIO_NUM_47   /* header pin 37 */
-#define LED_COUNT           24            /* TODO: set to the real LED count */
-#define LED_MAX_BRIGHTNESS  64            /* 0-255; keeps current and heat down */
+#define LED_COUNT           78            /* cut long; set to the final count after fitting */
+#define LED_MAX_BRIGHTNESS  40            /* 0-255; ~15% keeps 78 LEDs under ~0.75 A on white */
 
 /* ---- Lid switch (SS-5GL style snap switch) ----
  * COM -> GND (pin 39), NO -> GPIO48 (pin 33). Internal pull-up.
@@ -49,3 +65,4 @@
 /* ---- Content on the microSD card ---- */
 #define CONTENT_DIR         "/sdcard/liahona"
 #define CONTENT_MANIFEST    CONTENT_DIR "/manifest.json"
+#define BALL_ID_FILE        CONTENT_DIR "/ball_id.txt"
