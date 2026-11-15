@@ -42,6 +42,8 @@ typedef struct {
     uint32_t nfc_fw;                   /* IC/ver/rev */
     char     nfc_uid[24];              /* last tag UID as hex, "" if none */
     bool     nfc_tag_present;
+    uint32_t nfc_tap_seq;              /* bumps each time a tag arrives */
+    char     nfc_tap_uid[24];          /* that tag, uppercase hex, no separators */
 
     /* LoRa (SX1262) */
     test_result_t lora;                /* PASS = chip found on SPI */
@@ -62,6 +64,8 @@ typedef struct {
     uint8_t  leader_cmd_arg;
     uint32_t leader_cmd_count;
     uint8_t  stage;                    /* journey step (set by the journey engine) */
+    bool     journey_active;           /* a journey is loaded and running */
+    bool     dimmed;                   /* leader "dim" command */
 
     /* Lid switch */
     bool     lid_closed;
@@ -107,8 +111,20 @@ void lora_start(void);
 void lora_send_status_now(void);                  /* queue a status report (if TX enabled) */
 void lora_send_checkin(const uint8_t *uid, int uid_len, uint8_t station);
 void leds_start(void);
-void leds_set_mode(int mode);                     /* 0 idle glow, 1 test cycle, 2 off */
+void leds_set_mode(int mode);                     /* 0 idle glow, 1 test cycle, 2 off, 3 pulse (then glow) */
 void inputs_start(void);                          /* lid switch + battery */
 void storage_start(void);
 void audio_test_init(void);
 void audio_test_beep(void);                       /* plays a short tone (non-blocking) */
+void audio_play(const char *file, int start_ms, int dur_ms);   /* media file name or full path */
+void audio_stop(void);
+bool audio_busy(void);
+void audio_tap_sound(void);                       /* short tick, skipped while audio plays */
+
+void journey_start(void);                         /* journey_port.c: loads from SD, runs the engine */
+void ui_journey_build(void);                      /* ui_journey.c */
+void ui_journey_tick(void);
+void ui_journey_show(void);
+bool ui_journey_is_active_screen(void);
+void ui_show_test(void);                          /* ui.c */
+void ui_show_compass(void);

@@ -64,6 +64,7 @@ void app_main(void)
     leds_start();
     lora_start();
     audio_test_init();
+    journey_start();         /* reads liahona/journey.json + roster.json from the SD card */
 
     ESP_LOGI(TAG, "All modules started");
 }

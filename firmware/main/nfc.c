@@ -2,6 +2,7 @@
  * PN532 NFC reader over I2C (address 0x24; DIP switch 1 ON, 2 OFF).
  * Reads the firmware version once, then polls for a tag and shows its UID.
  */
+#include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -105,6 +106,17 @@ static void nfc_task(void *arg)
                 char hx[4];
                 snprintf(hx, sizeof(hx), k ? ":%02X" : "%02X", d[6 + k]);
                 strlcat(u, hx, sizeof(g_state.nfc_uid));
+            }
+            /* a "tap" is a tag arriving (or a different tag) */
+            char hex[24] = "";
+            for (int k = 0; k < idlen && 6 + k < n && k < 10; k++) {
+                char hx[3];
+                snprintf(hx, sizeof(hx), "%02X", d[6 + k]);
+                strlcat(hex, hx, sizeof(hex));
+            }
+            if (!g_state.nfc_tag_present || strcmp(hex, g_state.nfc_tap_uid) != 0) {
+                strlcpy(g_state.nfc_tap_uid, hex, sizeof(g_state.nfc_tap_uid));
+                g_state.nfc_tap_seq++;
             }
             g_state.nfc_tag_present = true;
         } else {

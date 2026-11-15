@@ -1,0 +1,56 @@
+{
+ "generatedAt": "x",
+ "uidFormat": "hex-msb-first",
+ "teams": [
+  {
+   "id": "t1",
+   "name": "Lehi",
+   "color": "#c9a24a",
+   "ballId": "1"
+  },
+  {
+   "id": "t2",
+   "name": "Nephi",
+   "ballId": "2"
+  }
+ ],
+ "people": [
+  {
+   "id": "p1",
+   "name": "Ann",
+   "role": "youth",
+   "teamId": "t1"
+  },
+  {
+   "id": "p2",
+   "name": "Ben",
+   "role": "youth",
+   "teamId": "t1"
+  },
+  {
+   "id": "p3",
+   "name": "Cal",
+   "role": "leader",
+   "teamId": "t1"
+  },
+  {
+   "id": "p4",
+   "name": "Dee",
+   "role": "leader",
+   "teamId": "t2"
+  },
+  {
+   "id": "p5",
+   "name": "Eve",
+   "role": "youth",
+   "teamId": "t2"
+  }
+ ],
+ "cards": {
+  "04C1000000000001": "p1",
+  "04C1000000000002": "p2",
+  "04C1000000000003": "p3",
+  "04C1000000000004": "p4",
+  "04C1000000000005": "p5"
+ }
+}

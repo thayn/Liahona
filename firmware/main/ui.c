@@ -86,6 +86,15 @@ static void any_touch_cb(lv_event_t *e)
 
 static void go_test_cb(lv_event_t *e)    { lv_screen_load_anim(scr_test, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false); }
 static void go_compass_cb(lv_event_t *e) { lv_screen_load_anim(scr_compass, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false); }
+/* "Back" from the self-test: to the journey when one is running, else the compass */
+static void back_cb(lv_event_t *e)
+{
+    bool j;
+    STATE_LOCK(); j = g_state.journey_active; STATE_UNLOCK();
+    if (j) ui_journey_show(); else go_compass_cb(e);
+}
+void ui_show_test(void)    { go_test_cb(NULL); }
+void ui_show_compass(void) { go_compass_cb(NULL); }
 static void beep_cb(lv_event_t *e)       { audio_test_beep(); }
 
 /* GPS noise test: screen dark for 60 s, GPS keeps listening (watch the log). */
@@ -172,7 +181,7 @@ static void build_test(void)
     lv_obj_add_event_cb(row_val[R_GPS], quiet_cb, LV_EVENT_CLICKED, NULL);
 
     static const char *names[4] = { "Beep", "LEDs", "Mark", "Back" };
-    lv_event_cb_t cbs[4] = { beep_cb, leds_cb, mark_cb, go_compass_cb };
+    lv_event_cb_t cbs[4] = { beep_cb, leds_cb, mark_cb, back_cb };
     for (int i = 0; i < 4; i++) {
         lv_obj_t *b = make_button(scr_test, names[i], cbs[i]);
         lv_obj_align(b, LV_ALIGN_BOTTOM_MID, -201 + i * 134, -110);
@@ -283,6 +292,13 @@ static void compass_timer_cb(lv_timer_t *t)
 }
 
 static void long_press_cb(lv_event_t *e) { go_test_cb(e); }
+/* a short tap on the compass goes back to the journey, if one is running */
+static void compass_click_cb(lv_event_t *e)
+{
+    bool j;
+    STATE_LOCK(); j = g_state.journey_active; STATE_UNLOCK();
+    if (j) ui_journey_show();
+}
 
 void ui_start(void)
 {
@@ -291,7 +307,9 @@ void ui_start(void)
     ui_compass_build(scr_compass);
     lv_obj_add_event_cb(scr_compass, any_touch_cb, LV_EVENT_PRESSED, NULL);
     lv_obj_add_event_cb(scr_compass, long_press_cb, LV_EVENT_LONG_PRESSED, NULL);
+    lv_obj_add_event_cb(scr_compass, compass_click_cb, LV_EVENT_SHORT_CLICKED, NULL);
     build_test();
+    ui_journey_build();
     lv_screen_load(scr_compass);
     lv_timer_create(refresh_cb, 200, NULL);
     lv_timer_create(compass_timer_cb, 33, NULL);
