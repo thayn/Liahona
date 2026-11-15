@@ -66,3 +66,13 @@
 #define CONTENT_DIR         "/sdcard/liahona"
 #define CONTENT_MANIFEST    CONTENT_DIR "/manifest.json"
 #define BALL_ID_FILE        CONTENT_DIR "/ball_id.txt"
+/* Journey content, copied from the Liahona Manager:
+ *   journey.json   the journey's "Ball file" (Journeys tab), renamed
+ *   roster.json    Settings -> "Ball roster (JSON)", renamed
+ *   media/         the journey's audio files (MP3 or 16-bit WAV) */
+#define CONTENT_JOURNEY     CONTENT_DIR "/journey.json"
+#define CONTENT_ROSTER      CONTENT_DIR "/roster.json"
+#define CONTENT_MEDIA_DIR   CONTENT_DIR "/media"
+#define AUDIO_VOLUME        75            /* 0-100 */
+/* Local time = GPS time (UTC) + this, for "Rest until 13:30". Pacific daylight = -420. */
+#define LOCAL_UTC_OFFSET_MIN  (-420)

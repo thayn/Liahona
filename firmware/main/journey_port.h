@@ -1,0 +1,10 @@
+/* Thread-safe calls into the journey engine, for the screen (journey_port.c). */
+#pragma once
+#include "journey.h"
+
+void journey_ui_view(jv_view_t *v);
+void journey_ui_choice(int i);
+void journey_ui_continue(void);
+void journey_ui_hint(void);
+void journey_ui_replay(void);
+void journey_ui_restart(void);

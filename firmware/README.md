@@ -1,7 +1,7 @@
-# Liahona ball firmware — v0.3.0 (milestone 2: LoRa link)
+# Liahona ball firmware — v0.4.0 (milestone 3: journey engine)
 
 Foundation + bench self-test for the Waveshare **ESP32-P4-WIFI6-Touch-LCD-4C** (4", 720×720).
-Built and checked with **ESP-IDF v6.1** (target `esp32p4`). It compiles cleanly, but it has not run on hardware yet.
+Built and checked with **ESP-IDF v6.1** (target `esp32p4`). The journey screens (v0.4) are new and have not run on hardware yet.
 
 ## What it does
 - **Compass screen**, styled like the concept renderings:
@@ -71,7 +71,39 @@ What the ball does with TX on:
 
 Host tests for the radio code (no hardware): `make -C components/liahona_radio/test_host`.
 
+## Journey (v0.4)
+
+The ball now plays a journey from the SD card: stage briefs, questions, check-ins, roll call by medallion, darkening and hints, plus audio clues.
+
+### SD card layout (FAT32)
+```
+liahona/
+  journey.json    Manager → Journeys → download the Ball file, rename it to journey.json
+  roster.json     Manager → Settings → Ball roster (teams, people, medallion UIDs)
+  ball_id.txt     this ball's number, e.g. 1 (matches the team's ball in the roster)
+  media/          audio named in the journey: .mp3 or .wav (16-bit PCM)
+```
+With no `journey.json`, the ball stays on the compass. With a bad file, the journey screen shows the error.
+
+### How a team plays
+- **Gather:** every team member taps their medallion on the ball. A leader can tap twice to start without everyone.
+- **Brief**, then the stage's tasks in order. Each tap on the ball gives a short tick.
+- **Supported tasks:** intro, question, true/false, check-in (tap the station's place tag), gather fragments (decoys darken the ball), testimony, leader approve, rest, scripted darken, audio clue and name that hymn.
+- **Other task types** show their text; a leader taps their medallion to move on.
+- **Darkening:** wrong answers or a missed deadline darken the ball for the times in `penalties.darken_s`. With unity restore, all members tap to bring the light back; a visiting leader can also restore it.
+- **Hints** appear after `hint_after` wrong tries. Audio tasks have **Play again**.
+- **Compass button** appears when the current place has coordinates. Tap the compass to come back.
+- **Long-press** anywhere for the self-test page; its Back button returns to the journey.
+
+### Leader commands (from the Field dashboard)
+Unlock and Skip move the current task on. Jump to stage *n*, or 0 to restart. Dim and Restore turn the screen and LEDs down or up.
+
+### Resume
+Progress (stage, task, wrong count) is kept in NVS. After a power cycle the ball picks up where it left off. Replacing `journey.json` with a different journey starts it fresh.
+
+Host test for the engine (no hardware): `make -C components/journey/test_host && components/journey/test_host/test_journey`.
+
 ## Known limits (next milestones)
 - **Compass:** uncalibrated and not tilt-compensated. Calibration is coming. Set `MAG_DECLINATION_DEG` in `board_pins.h` for your camp, so GPS bearings and the compass agree.
-- **LoRa:** working protocol, not yet tested over the air (it needs the Core1262-HF). Leader messages and commands are stored but the journey screens don't act on them yet.
-- **Not in this version yet:** video and audio playback from the SD card, the journey engine (manifest, unlock rules), Wi-Fi via the ESP32-C6, and OTA updates. The partitions are already set up for OTA.
+- **LoRa:** tested both ways to about 300 m with the stock antennas. Leader text messages are stored but not shown on the journey screen yet.
+- **Not in this version yet:** video playback, the remaining task types, Wi-Fi via the ESP32-C6, and OTA updates. The partitions are already set up for OTA.

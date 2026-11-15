@@ -41,6 +41,15 @@ static void leds_task(void *arg)
             }
             break;
         }
+        case 3: {                                   /* pulse: three bright gold swells, then glow */
+            static int t0 = -1;
+            if (t0 < 0) t0 = step;
+            int k = step - t0;
+            float v = 0.5f - 0.5f * cosf(k * 0.2f);
+            fill((int)(255 * v), (int)(170 * v), (int)(50 * v));
+            if (k > 94) { t0 = -1; s_mode = 0; }
+            break;
+        }
         case 0: {                                   /* idle: gold breathing */
             float k = 0.35f + 0.65f * (0.5f + 0.5f * sinf(step * 0.06f));
             fill((int)(255 * k), (int)(150 * k), (int)(30 * k));
