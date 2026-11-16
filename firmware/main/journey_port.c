@@ -146,7 +146,7 @@ static void journey_task(void *arg)
         else if (got_cmd && cmd == LP_CMD_RESTORE) apply_dim(false);
 
         LOCK();
-        if (tap) journey_tag(uid);
+        if (tap) { ESP_LOGI(TAG, "tap %s", uid); journey_tag(uid); }
         if (got_cmd && cmd != LP_CMD_DIM && cmd != LP_CMD_RESTORE) journey_leader(cmd, arg8);
         journey_tick();
         jv_view_t v;
