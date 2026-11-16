@@ -302,9 +302,9 @@ static void compass_click_cb(lv_event_t *e)
 
 void ui_start(void)
 {
-    /* Wait for the LVGL lock. With the newer BSP, a timeout of 0 means "don't wait",
-     * so the UI was being built while LVGL was drawing (assert + watchdog). */
-    while (!bsp_display_lock(100)) { }
+    /* Wait as long as it takes for the LVGL lock (-1 = forever). A timeout of 0 means
+     * "don't wait" with this BSP, and it returns esp_err_t (ESP_OK = 0), not bool. */
+    bsp_display_lock(-1);
     scr_compass = make_screen();
     ui_compass_build(scr_compass);
     lv_obj_add_event_cb(scr_compass, any_touch_cb, LV_EVENT_PRESSED, NULL);
