@@ -1,6 +1,21 @@
-# Liahona CAD, v2: 175 mm, concept ornament, multi-colour
+# Liahona CAD, v3: 160 mm ball for the 3.4" screen
 
 `python3 liahona.py` rebuilds every part into `out/`. `python3 check.py` re-runs the checks. All dimensions are in the `S = dict(...)` settings block in `liahona.py`. Coordinates: ball centre at the origin, +Z up (display faces up), hinge at −Y (back).
+
+## Sizes
+| Size | Screen | Glass | Build |
+|---|---|---|---|
+| **160 mm** (default) | ESP32-P4-WIFI6-Touch-LCD-**3.4C**, 800 × 800 | 115 mm, 6 mm thick | `python3 liahona.py` → `out/` |
+| 175 mm | ESP32-P4-WIFI6-Touch-LCD-4C, 720 × 720 | 126 mm | `LIAHONA_SIZE=175 python3 liahona.py`. The last 175 mm print files are in `out/175mm/` |
+
+The ball's shape (radius, split heights, ornament, band, letters, insert circles, spindle) scales with the ball. Bought parts keep their real sizes: switches, battery, boards, magnets, the 2 mm hinge rod and the 3 mm spindle rod.
+
+## What changed in v3
+- **160 mm ball** around the 115 mm glass. There's still a 9 mm shoulder round the glass.
+- **Hinge pin can go in now.** A 2.2 mm channel runs from the right-hand knuckle (seen from the front, at the back) out through the bezel wall. Close the lid, push a **32 mm piece of 2 mm brass rod** in from the right until it stops (it ends about 1 mm inside), then dab the hole with paint. The right lid knuckle is a free fit; the left one grips the rod (2.05 mm), so the rod can't walk out.
+- **Chassis boards** (PowerBoost, LoRa, compass) moved in, so the module still drops in through the smaller display spigot. The spigot has four shallow grooves where the chassis posts pass.
+- **GPS** sits steeper (65°) and a little lower to fit the smaller shoulder.
+- **Rivet strip** under the bezel kept at full height.
 
 ## Files per part
 - `<part>.3mf`: every colour body already aligned. In Bambu Studio, open it, choose "load as one object with multiple parts", then assign a filament to each part.
@@ -26,7 +41,7 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 | base_cap | flipped (flat top on the bed) | Twelve raised petals, flat foot, USB-C slot at the very bottom centre, 6069 bore + nut pocket, cable channel |
 | chassis, battery_tray, plunger | as before | Any PETG |
 
-## What changed from v1
+## What changed from v1 (v2, 175 mm)
 - Ball is 175 mm. The lid seam moved up to z 52, giving a 9 mm shoulder around the glass.
 - Ornament follows the concept: triangle leaf panels above and below the band, rivet rims, petal base, leaf panels on the lid. The ornament is 1.2 mm of relief on top of the 2.4 mm wall and never cuts into it. Raised edges are stepped or chamfered so they print without supports.
 - Letters are 8 mm (was 13), spaced out like the concept. The text repeats three times around, with a lit diamond between repeats.
@@ -47,6 +62,9 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 - Thin spots are all intended: retaining lips, ornament straps, spindle walls (1.2 mm), and the 1.6 mm USB skin.
 
 ## Still needed
+- **3.4C board:** the back board and its 4 mounting holes are assumed to match the 4C (85 × 65 mm board, holes 75 × 73 mm apart). Please measure. The connector keep-out (5 mm round the board) clips the spigot at the corners, so check that the USB-C plugs clear when you test-fit.
+- **Lid switch (SS07):** body L × W × H, and how far the lever sticks out (free and when it clicks). This sets the plunger length.
+- **Power switch:** body L × W × H, the actuator's width, height and travel, and any mounting legs.
 - Standoff height/thread (placeholder 9 mm, M2.5).
 - 6069 nose depth (to confirm the plug engages through the 1.6 mm skin).
 - SS07 lever travel (plunger length). PN532, Core1262 and PowerBoost holes.

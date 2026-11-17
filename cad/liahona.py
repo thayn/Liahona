@@ -19,6 +19,16 @@ import hebrew
 # =============================================================================
 # SETTINGS
 # =============================================================================
+# Sizes: the 175 mm ball (4" 4C screen, 126 mm glass) is the reference design. Every
+# ball-shaped dimension below is written for 175 mm and scaled by BALL_D / 175.
+# Bought parts (switches, battery, boards, rod) keep their real sizes.
+SIZES = {
+    "160": dict(BALL_D=160.0, DISP_D=115.0,    # ESP32-P4-WIFI6-Touch-LCD-3.4C (default)
+                AFTER=dict(GPS_RC=63.0, GPS_ZC=26.0, GPS_TILT=65.0)),   # GPS fits the smaller shoulder
+    "175": dict(BALL_D=175.0, DISP_D=126.0),   # ESP32-P4-WIFI6-Touch-LCD-4C
+}
+SIZE = __import__("os").environ.get("LIAHONA_SIZE", "160")
+
 S = dict(
     # ball ---------------------------------------------------------------
     R=87.5,                  # 175 mm ball (outer surface of raised ornament)
@@ -36,8 +46,8 @@ S = dict(
     Z_SPINDLE_SEAT=85.5,     # flat on the lid for the spindle
 
     # display ----------------------------------------------------------------
-    DISP_D=126.0, DISP_T=6.0,
-    GASKET=0.5, LIP_T=2.4, LIP_R_IN=61.0,
+    DISP_D=126.0, DISP_T=6.0,          # DISP_D comes from SIZES
+    GASKET=0.5, LIP_T=2.4, LIP_OVER=2.0,   # glass covered 2 mm all round
     BOARD_W=85.0, BOARD_H=65.0, BOARD_DEPTH=9.0,
     CONN_OVERHANG=5.0,
     STANDOFF_X=75.0, STANDOFF_Y=73.0,
@@ -45,7 +55,8 @@ S = dict(
     STANDOFF_D=5.0, STANDOFF_SCREW_CLR=2.8,  # 2.8 = M2.5, 3.4 = M3
 
     # bezel bayonet (upper-shell spigot = display seat) -------------------------
-    SPIGOT_R_IN=61.4, LUG_H=2.5, LUG_DEPTH=1.4, LUG_W_DEG=14.0,
+    SPIGOT_SEAT=1.6,         # glass rests 1.6 mm deep on the spigot top
+    LUG_H=2.5, LUG_DEPTH=1.4, LUG_W_DEG=14.0,
     LUG_ANGLES=(90.0, 210.0, 330.0), TWIST_DEG=20.0,
     SPIGOT_LOW=28.0,         # display spigot runs down to here, then a 45 deg web
     SEAM_COLLAR_R_IN=76.5, SEAM_COLLAR_H=6.0, ORING_CORD=1.5,
@@ -92,6 +103,7 @@ S = dict(
     # lid / hinge / switches --------------------------------------------------------------
     HINGE_DROP=3.4, KNUCKLE_R=3.4, HINGE_PROUD=0.8,
     PIN_D=2.0, PIN_HOLE_FREE=2.2, PIN_HOLE_PRESS=2.05,
+    PIN_ENTRY_SIDE=1,        # +1: pin goes in from the +X side (right, seen from the front)
     KNUCKLE_CENTER_W=12.0, KNUCKLE_GAP=0.4, KNUCKLE_SIDE_W=10.0,
     LID_OPEN_DEG=110.0,
     LID_SW=(12.7, 5.75, 6.5), LID_SW_ANGLE=292.0,    # E-Switch SS07 + plunger
@@ -101,6 +113,27 @@ S = dict(
     SPINDLE_ROD_D=3.0, SPINDLE_H=76.0, SPINDLE_WALL=1.2,
     SPINDLE_PRINTED_MIN_R=3.3, SPINDLE_DOWEL_DEPTH=10.0,   # one-piece printed spindle
 )
+
+# scale the ball-shaped settings ---------------------------------------------------
+S.update({_k: _v for _k, _v in SIZES[SIZE].items() if _k != "AFTER"})
+K = S["BALL_D"] / 175.0
+for _k in ("R", "Z_LID", "Z_LIDCAP", "Z_BEZEL", "Z_SEAM", "Z_BASECAP", "Z_FOOT", "Z_SPINDLE_SEAT",
+           "SPIGOT_LOW", "SEAM_COLLAR_R_IN", "GPS_ZC", "GPS_RC", "SPINDLE_H", "LETTER_H"):
+    S[_k] = S[_k] * K
+for _k in ("BAND_Z", "TRI_UPPER", "TRI_LOWER", "COMPASS_XY"):
+    S[_k] = tuple(v * K for v in S[_k])
+S["SPIGOT_R_IN"] = S["DISP_D"] / 2 - S["SPIGOT_SEAT"]
+S["LIP_R_IN"] = S["DISP_D"] / 2 - S["LIP_OVER"]
+S["DECK_R_OUT"] = min(S["DECK_R_OUT"], 58.0 * K)
+# keep a full rivet strip between the upper triangle row and the bezel joint
+S["TRI_UPPER"] = (S["TRI_UPPER"][0], min(S["TRI_UPPER"][1], S["Z_BEZEL"] - 3.6))
+S.update(SIZES[SIZE].get("AFTER", {}))
+
+
+def bs(v):
+    """A ball-shaped length written for the 175 mm ball."""
+    return v * K
+
 
 # derived ----------------------------------------------------------------------
 R, T, REL = S["R"], S["T"], S["RELIEF"]
@@ -406,7 +439,7 @@ def lid_switch_pose():
     """SS07 body centre (local frame: x along tangent, y radial, z up)."""
     sl, sw, sh = S["LID_SW"]
     th = S["LID_SW_ANGLE"]
-    r = 68.2
+    r = BEZ_COLLAR_R_IN + 4.1        # just outside the spigot collar
     z_top = S["Z_BEZEL"] + 0.5 + sh   # body sits just above the bezel bottom
     return th, r, z_top - sh / 2
 
@@ -421,7 +454,7 @@ def lid_switch_plane():
 def pwr_switch_plane():
     th = S["PWR_SW_ANGLE"]
     t = math.radians(th)
-    r = 67.9
+    r = R_POCKET + T + 2.0           # just outside the display pocket wall
     bh = S["PWR_SW_BODY"][2]
     z_top = Z_LID - T              # body top under a 2.4 mm skin
     return Plane(origin=(r * math.cos(t), r * math.sin(t), z_top - bh / 2),
@@ -466,7 +499,7 @@ def upper_shell():
     if engr:
         gold = gold.cut(*engr)
     for i in range(24):
-        gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2 + 0.3, R))
+        gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2, R))
     # band: gold removed, tan field at the base surface, clear letters through
     gold = gold - (zslab(bz0, bz1) & (Sphere(R + 3) - Sphere(RI - 0.02)))
     gold = gold + raised_band(bz1, bz1 + fw) + raised_band(bz0 - fw, bz0)
@@ -496,6 +529,19 @@ def upper_shell():
     ri_s, ro_s = S["SPIGOT_R_IN"], SPIGOT_R_OUT
     zl = S["SPIGOT_LOW"]
     spigot = ring(ri_s, ro_s, zl - 0.01, Z_PLATE)
+    # where the chassis posts come close to the spigot (small screens), groove the
+    # spigot and its web so the module still drops in from the top
+    sx, sy = S["STANDOFF_X"] / 2, S["STANDOFF_Y"] / 2
+    r_post = math.hypot(sx, sy) + S["POST_OD"] / 2 + 0.8
+    grooves = []
+    if r_post > ri_s:
+        z_lo = chassis_z()[0] - 1
+        for x in (-sx, sx):
+            for y in (-sy, sy):
+                a = math.degrees(math.atan2(y, x))
+                w = math.degrees((S["POST_OD"] + 2.0) / ri_s)
+                grooves.append(rev([(ri_s - 1, z_lo), (r_post, z_lo), (r_post, Z_PLATE + 1),
+                                    (ri_s - 1, Z_PLATE + 1)], w, a - w / 2))
     rb = RI + 1.0
     sweb = rev([(ri_s, zl), (ri_s, zl + k), (rb, zl + k - (rb - ri_s)), (rb, zl - (rb - ri_s))]) & Sphere(RI + 0.01)
     lugs = bayonet_lugs(ro_s, zb + 2.0) - cyl(ri_s, zb, Z_PLATE + 1)
@@ -507,6 +553,8 @@ def upper_shell():
     blk = blk & (Sphere(RI + 0.01) - cyl(ro_s - 0.01, -100, 100)) & zslab(zl - 30, zb - 0.6)
     blk = blk & rev([(ri_s, zl), (R + 5, zl - (R + 5 - ri_s)), (R + 5, 100), (ri_s, 100)])
     interior = collar + web + led_cyl + lips + spigot + sweb + lugs + blk
+    if grooves:
+        interior = interior - union(grooves)
     # wire holes: shoulder web (switches, GPS), LED web (strip leads)
     for a in (S["LID_SW_ANGLE"], S["PWR_SW_ANGLE"], th - 16.0):
         t = math.radians(a)
@@ -548,6 +596,11 @@ def bezel_ring():
     gold = gold - lid_knuckle_sweep(S["MIN_CLR"])
     gold = gold - Pos(0, AX_Y, Z_AX) * Rot(0, 90, 0) * Cylinder(S["PIN_HOLE_FREE"] / 2, 2 * (
         S["KNUCKLE_CENTER_W"] / 2 + S["KNUCKLE_GAP"] + S["KNUCKLE_SIDE_W"]) + 1)
+    # pin entry: a free tunnel from the side knuckle out through the bezel wall, so the
+    # rod slides in with the lid closed (plug the small hole with paint afterwards)
+    x_in = S["KNUCKLE_CENTER_W"] / 2 + S["KNUCKLE_GAP"]
+    gold = gold - Pos(S["PIN_ENTRY_SIDE"] * (x_in + 30), AX_Y, Z_AX) * Rot(0, 90, 0) * \
+        Cylinder(S["PIN_HOLE_FREE"] / 2, 60)
     # lid switch pocket (open below) + plunger hole up to the bezel top
     sl, sw, sh = S["LID_SW"]
     pl = lid_switch_plane()
@@ -572,12 +625,16 @@ def lid_ring():
             gold = gold + rivet(a, lat_of((Z_LID + zt) / 2, R))
     gold = gold + ((lid_knuckles(0.0) & Sphere(R + S["HINGE_PROUD"] + 0.01)) - Sphere(RI))
     gold = gold - bezel_knuckle_zone(S["MIN_CLR"])
-    gold = gold - Pos(0, AX_Y, Z_AX) * Rot(0, 90, 0) * Cylinder(S["PIN_HOLE_PRESS"] / 2, 80)
+    # pin: free through the entry-side knuckle, press fit in the far one
+    x_in = S["KNUCKLE_CENTER_W"] / 2 + S["KNUCKLE_GAP"]
+    e = S["PIN_ENTRY_SIDE"]
+    gold = gold - Pos(e * (x_in + 30), AX_Y, Z_AX) * Rot(0, 90, 0) * Cylinder(S["PIN_HOLE_FREE"] / 2, 60)
+    gold = gold - Pos(-e * (x_in + 30), AX_Y, Z_AX) * Rot(0, 90, 0) * Cylinder(S["PIN_HOLE_PRESS"] / 2, 60)
     # screw tabs at the top (on the bed when printed upside down)
     for a in (30.0, 150.0, 270.0):
-        tab = rev([(41.0, zt - 3.0), (RI + 1, zt - 3.0), (RI + 1, zt), (41.0, zt)], 16.0, a - 8.0) & Sphere(RI + 0.5)
+        tab = rev([(bs(41.0), zt - 3.0), (RI + 1, zt - 3.0), (RI + 1, zt), (bs(41.0), zt)], 16.0, a - 8.0) & Sphere(RI + 0.5)
         gold = gold + tab
-        gold = gold - Pos(46 * math.cos(math.radians(a)), 46 * math.sin(math.radians(a)), zt - 2) * \
+        gold = gold - Pos(bs(46) * math.cos(math.radians(a)), bs(46) * math.sin(math.radians(a)), zt - 2) * \
             Cylinder(S["M3_CLR"] / 2, 10)
     return {"gold": gold}
 
@@ -610,7 +667,7 @@ def lid_cap():
         gold = gold - cone_patch(unary_union([rib] + veins).intersection(leaf.buffer(-1.0)), th, lc, R - 0.6, R + 1)
     # inserts + spindle rod socket
     for a in (30.0, 150.0, 270.0):
-        gold = gold - Pos(46 * math.cos(math.radians(a)), 46 * math.sin(math.radians(a)),
+        gold = gold - Pos(bs(46) * math.cos(math.radians(a)), bs(46) * math.sin(math.radians(a)),
                           zt + S["INSERT_L"] / 2 - 0.01) * Cylinder(S["INSERT_D"] / 2, S["INSERT_L"])
     gold = gold - Pos(0, 0, S["Z_SPINDLE_SEAT"] - 6) * Cylinder(S["SPINDLE_ROD_D"] / 2 + 0.05, 12.02)
     return {"gold": gold}
@@ -718,9 +775,9 @@ def lower_shell():
     tan = tan - grille
     # base-cap tabs
     for a in (0.0, 120.0, 240.0):
-        tab = rev([(37.0, zc), (R, zc), (R, zc + 3.0), (37.0, zc + 3.0)], 14.0, a - 7.0) & Sphere(RI + 0.5)
+        tab = rev([(bs(37.0), zc), (R, zc), (R, zc + 3.0), (bs(37.0), zc + 3.0)], 14.0, a - 7.0) & Sphere(RI + 0.5)
         gold = gold + tab
-        gold = gold - Pos(42 * math.cos(math.radians(a)), 42 * math.sin(math.radians(a)), zc + 2) * \
+        gold = gold - Pos(bs(42) * math.cos(math.radians(a)), bs(42) * math.sin(math.radians(a)), zc + 2) * \
             Cylinder(S["M3_CLR"] / 2, 10)
     return {"gold": gold, "tan": tan}
 
@@ -753,9 +810,9 @@ def base_cap():
     gold = gold - Pos(0, 0, (zs + zs + S["USB_GRIP"]) / 2) * Cylinder(S["USB_BORE"] / 2, S["USB_GRIP"])
     gold = gold - cyl(S["USB_NUT_D"] / 2, zs + S["USB_GRIP"], zc + 1)
     # cable channel on the cap top (open to the bed) toward +X
-    gold = gold - Pos(22, 0, zc - 4) * Box(44, 7, 8.02)
+    gold = gold - Pos(bs(22), 0, zc - 4) * Box(bs(44), 7, 8.02)
     for a in (0.0, 120.0, 240.0):
-        gold = gold - Pos(42 * math.cos(math.radians(a)), 42 * math.sin(math.radians(a)),
+        gold = gold - Pos(bs(42) * math.cos(math.radians(a)), bs(42) * math.sin(math.radians(a)),
                           zc - S["INSERT_L"] / 2 + 0.01) * Cylinder(S["INSERT_D"] / 2, S["INSERT_L"])
     return {"gold": gold}
 
@@ -769,7 +826,7 @@ def chassis():
             body = body + Pos(x, y, (z0 + Z_STANDOFF_END) / 2) * Cylinder(S["POST_OD"] / 2, Z_STANDOFF_END - z0)
             body = body - Pos(x, y, (z0 + Z_STANDOFF_END) / 2) * Cylinder(S["STANDOFF_SCREW_CLR"] / 2, 80)
             body = body - Pos(x, y, z0 + 1.0) * Cylinder(2.9, 2.02)
-    for (cx, cy, (l, w, _)) in ((0.0, 42.0, S["POWERBOOST"]), (-46.0, 0.0, S["LORA"]), (0.0, -40.0, S["SHIFTER"])):
+    for (cx, cy, (l, w, _)) in ((0.0, bs(42.0), S["POWERBOOST"]), (-bs(46.0), 0.0, S["LORA"]), (0.0, -bs(40.0), S["SHIFTER"])):
         fr = Pos(cx, cy, z1 + 1.0) * Box(l + 0.6 + 2 * T, w + 0.6 + 2 * T, 2.0) - Pos(cx, cy, z1 + 1.0) * Box(l + 0.6, w + 0.6, 3.0)
         body = body + (fr & cyl(S["DECK_R_OUT"], z1 - 1, z1 + 5))
     cxx, cyy = S["COMPASS_XY"]
@@ -834,8 +891,8 @@ def components():
     z0, z1 = chassis_z()
     bl, bw, bh = S["BATT"]
     c["battery"] = Pos(0, 0, z0 - 0.3 - bh / 2) * Box(bl, bw, bh)
-    for name, (cx, cy, (l, w, h)) in (("powerboost", (0.0, 42.0, S["POWERBOOST"])), ("lora", (-46.0, 0.0, S["LORA"])),
-                                      ("shifter", (0.0, -40.0, S["SHIFTER"]))):
+    for name, (cx, cy, (l, w, h)) in (("powerboost", (0.0, bs(42.0), S["POWERBOOST"])), ("lora", (-bs(46.0), 0.0, S["LORA"])),
+                                      ("shifter", (0.0, -bs(40.0), S["SHIFTER"]))):
         c[name] = Pos(cx, cy, z1 + 0.3 + h / 2) * Box(l, w, h)
     cxx, cyy = S["COMPASS_XY"]
     cl, cw_, ch = S["LIS3MDL"]
