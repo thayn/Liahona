@@ -106,9 +106,13 @@ S = dict(
     PIN_ENTRY_SIDE=1,        # +1: pin goes in from the +X side (right, seen from the front)
     KNUCKLE_CENTER_W=12.0, KNUCKLE_GAP=0.4, KNUCKLE_SIDE_W=10.0,
     LID_OPEN_DEG=110.0,
-    LID_SW=(12.7, 5.75, 6.5), LID_SW_ANGLE=292.0,    # E-Switch SS07 + plunger
-    PLUNGER_D=2.0, PLUNGER_COLLAR=4.0,
-    PWR_SW_BODY=(9.0, 3.6, 3.5), PWR_SW_ACT=(1.5, 2.0), PWR_SW_TRAVEL=2.0,
+    LID_SW=(12.8, 5.8, 6.5), LID_SW_ANGLE=292.0,     # measured micro switch (L, W, body H) + plunger
+    LID_SW_FREE=3.83,        # lever tip above the body top, free (measured)
+    LID_SW_CLICK=2.04,       # ... where it clicks (measured)
+    LID_SW_OVERTRAVEL=0.5,   # lid pushes the lever this far past the click
+    LID_SW_SKIN=2.0,         # bezel top over the plunger pocket
+    PLUNGER_D=2.0, PLUNGER_COLLAR=4.0, PLUNGER_COLLAR_H=1.2,
+    PWR_SW_BODY=(9.1, 3.6, 3.5), PWR_SW_ACT=(1.5, 2.0), PWR_SW_TRAVEL=2.0,   # 9.11 x 3.58 measured; height + actuator still placeholders
     PWR_SW_ANGLE=45.0,       # under the lid, front-right (clear of the bayonet lugs)
     SPINDLE_ROD_D=3.0, SPINDLE_H=76.0, SPINDLE_WALL=1.2,
     SPINDLE_PRINTED_MIN_R=3.3, SPINDLE_DOWEL_DEPTH=10.0,   # one-piece printed spindle
@@ -440,8 +444,19 @@ def lid_switch_pose():
     sl, sw, sh = S["LID_SW"]
     th = S["LID_SW_ANGLE"]
     r = BEZ_COLLAR_R_IN + 4.1        # just outside the spigot collar
-    z_top = S["Z_BEZEL"] + 0.5 + sh   # body sits just above the bezel bottom
+    # body top sits low enough that the free lever + plunger collar fit under the skin
+    z_top = Z_LID - S["LID_SW_SKIN"] - lid_sw_headroom()
     return th, r, z_top - sh / 2
+
+
+def lid_sw_headroom():
+    """Space above the switch body: free lever + plunger collar + slack."""
+    return S["LID_SW_FREE"] + S["PLUNGER_COLLAR_H"] + 0.3
+
+
+def plunger_low():
+    """Plunger bottom above the body top with the lid closed (lever past the click)."""
+    return S["LID_SW_CLICK"] - S["LID_SW_OVERTRAVEL"]
 
 
 def lid_switch_plane():
@@ -604,7 +619,9 @@ def bezel_ring():
     # lid switch pocket (open below) + plunger hole up to the bezel top
     sl, sw, sh = S["LID_SW"]
     pl = lid_switch_plane()
-    gold = gold - pl * Pos(0, 2.5, -(sh / 2 + 6) / 2 + sh / 2 + 0.2) * Box(sl + 0.4, sw + 0.4 + 5.0, sh + 6.4)
+    z_bot = S["Z_BEZEL"] - 2.0 - pl.origin.Z            # open below
+    z_top = sh / 2 + lid_sw_headroom()                    # room for the free lever + collar
+    gold = gold - pl * Pos(0, 2.5, (z_bot + z_top) / 2) * Box(sl + 0.4, sw + 0.4 + 5.0, z_top - z_bot)
     gold = gold - pl * Pos(0, 0, sh / 2) * Cylinder(S["PLUNGER_D"] / 2 + 0.2, 2 * (Z_LID - Z_PLATE) + 4)
     # power slide switch under the lid: body pocket open below, actuator slot on top
     bl, bw, bh = S["PWR_SW_BODY"]
@@ -872,9 +889,13 @@ def plunger():
     """Lid-switch plunger: 2 mm shaft + collar (captured in the switch pocket)."""
     pl = lid_switch_plane()
     sh = S["LID_SW"][2]
-    z_shaft_top = Z_LID - 0.05 - (pl.origin.Z + sh / 2) - 0.8  # shown pressed (lid closed); 0.6 proud when open
-    shaft = Pos(0, 0, 0.8 + z_shaft_top / 2) * Cylinder(S["PLUNGER_D"] / 2, z_shaft_top)
-    collar = Pos(0, 0, 0.8 + 0.6) * Cylinder(S["PLUNGER_COLLAR"] / 2, 1.2)
+    # shown pressed (lid closed); with the lid open the lever lifts it about
+    # LID_SW_FREE - plunger_low() above the bezel top
+    lo = plunger_low()
+    ln = Z_LID - 0.05 - (pl.origin.Z + sh / 2) - lo
+    shaft = Pos(0, 0, lo + ln / 2) * Cylinder(S["PLUNGER_D"] / 2, ln)
+    ch = S["PLUNGER_COLLAR_H"]
+    collar = Pos(0, 0, lo + ch / 2) * Cylinder(S["PLUNGER_COLLAR"] / 2, ch)
     return {"gold": pl * Pos(0, 0, sh / 2) * (shaft + collar)}
 
 

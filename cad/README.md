@@ -16,6 +16,12 @@ The ball's shape (radius, split heights, ornament, band, letters, insert circles
 - **Chassis boards** (PowerBoost, LoRa, compass) moved in, so the module still drops in through the smaller display spigot. The spigot has four shallow grooves where the chassis posts pass.
 - **GPS** sits steeper (65°) and a little lower to fit the smaller shoulder.
 - **Rivet strip** under the bezel kept at full height.
+- **Lid switch from measurements:** 12.8 × 5.8 mm body, lever 3.83 mm above the body when free, clicks at 2.04 mm.
+  - The switch sits lower, hanging about 1 mm below the bezel, to leave room above it for the free lever and the plunger collar.
+  - With the lid shut, the lid pushes the plunger down until the lever is 0.5 mm past the click.
+  - With the lid open, the plunger stands about 2.3 mm above the bezel top.
+  - The plunger is a 5.7 mm shaft with a 4 mm collar. Put the plunger in before the switch.
+- **Power switch** body is now the measured 9.11 × 3.58 mm.
 
 ## Files per part
 - `<part>.3mf`: every colour body already aligned. In Bambu Studio, open it, choose "load as one object with multiple parts", then assign a filament to each part.
@@ -63,8 +69,7 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 
 ## Still needed
 - **3.4C board:** the back board and its 4 mounting holes are assumed to match the 4C (85 × 65 mm board, holes 75 × 73 mm apart). Please measure. The connector keep-out (5 mm round the board) clips the spigot at the corners, so check that the USB-C plugs clear when you test-fit.
-- **Lid switch (SS07):** body L × W × H, and how far the lever sticks out (free and when it clicks). This sets the plunger length.
-- **Power switch:** body L × W × H, the actuator's width, height and travel, and any mounting legs.
+- **Power switch:** height, and the slider's width, height and travel (body 9.11 × 3.58 mm measured).
 - Standoff height/thread (placeholder 9 mm, M2.5).
 - 6069 nose depth (to confirm the plug engages through the 1.6 mm skin).
 - SS07 lever travel (plunger length). PN532, Core1262 and PowerBoost holes.
