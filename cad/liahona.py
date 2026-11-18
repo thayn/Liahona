@@ -48,7 +48,7 @@ S = dict(
     # display ----------------------------------------------------------------
     DISP_D=126.0, DISP_T=6.0,          # DISP_D comes from SIZES
     GASKET=0.5, LIP_T=2.4, LIP_OVER=2.0,   # glass covered 2 mm all round
-    BOARD_W=85.0, BOARD_H=65.0, BOARD_DEPTH=9.0,
+    BOARD_W=84.6, BOARD_H=65.4, BOARD_DEPTH=9.0,   # 3.4C back board, measured 84.56 x 65.41
     CONN_OVERHANG=5.0,
     STANDOFF_X=75.0, STANDOFF_Y=73.0,
     STANDOFF_H=9.0,          # !!! PLACEHOLDER - measure
@@ -112,7 +112,10 @@ S = dict(
     LID_SW_OVERTRAVEL=0.5,   # lid pushes the lever this far past the click
     LID_SW_SKIN=2.0,         # bezel top over the plunger pocket
     PLUNGER_D=2.0, PLUNGER_COLLAR=4.0, PLUNGER_COLLAR_H=1.2,
-    PWR_SW_BODY=(9.1, 3.6, 3.5), PWR_SW_ACT=(1.5, 2.0), PWR_SW_TRAVEL=2.0,   # 9.11 x 3.58 measured; height + actuator still placeholders
+    PWR_SW_BODY=(9.1, 3.6, 3.5),     # measured 9.11 x 3.58 x 3.5
+    PWR_SW_ACT=(1.44, 1.78),         # slider width, height above the body (5.28 - 3.5), measured
+    PWR_SW_TRAVEL=3.71,              # measured slider range
+    PWR_SW_RECESS=0.3,               # slider top sits this far below the bezel top
     PWR_SW_ANGLE=45.0,       # under the lid, front-right (clear of the bayonet lugs)
     SPINDLE_ROD_D=3.0, SPINDLE_H=76.0, SPINDLE_WALL=1.2,
     SPINDLE_PRINTED_MIN_R=3.3, SPINDLE_DOWEL_DEPTH=10.0,   # one-piece printed spindle
@@ -471,7 +474,7 @@ def pwr_switch_plane():
     t = math.radians(th)
     r = R_POCKET + T + 2.0           # just outside the display pocket wall
     bh = S["PWR_SW_BODY"][2]
-    z_top = Z_LID - T              # body top under a 2.4 mm skin
+    z_top = Z_LID - S["PWR_SW_ACT"][1] - S["PWR_SW_RECESS"]   # slider just below the bezel top
     return Plane(origin=(r * math.cos(t), r * math.sin(t), z_top - bh / 2),
                  x_dir=(-math.sin(t), math.cos(t), 0), z_dir=(0, 0, 1))
 
@@ -627,9 +630,10 @@ def bezel_ring():
     bl, bw, bh = S["PWR_SW_BODY"]
     aw, ah = S["PWR_SW_ACT"]
     pp = pwr_switch_plane()
-    gold = gold - pp * Pos(0, 0, -(Z_LID - T - bh / 2 - zb) / 2 + bh / 2 + 0.1) * \
-        Box(bl + 0.4, bw + 0.4, Z_LID - T - zb + 2)
-    gold = gold - pp * Pos(0, 0, bh / 2 + T / 2) * Box(aw + S["PWR_SW_TRAVEL"] + 0.6, aw + 0.6, T + 2)
+    z_lo, z_hi = zb - 2.0 - pp.origin.Z, bh / 2 + 0.1     # body pocket, open below
+    gold = gold - pp * Pos(0, 0, (z_lo + z_hi) / 2) * Box(bl + 0.4, bw + 0.4, z_hi - z_lo)
+    # slot over the slider: its full travel, open through the bezel top
+    gold = gold - pp * Pos(0, 0, bh / 2 + 3.0) * Box(aw + S["PWR_SW_TRAVEL"] + 0.6, aw + 0.6, 6.0)
     return {"gold": gold}
 
 
