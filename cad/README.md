@@ -24,6 +24,7 @@ The ball's shape (radius, split heights, ornament, band, letters, insert circles
 - **Power switch from measurements:** body 9.11 × 3.58 × 3.5 mm, slider 1.44 mm wide, 1.78 mm tall, 3.71 mm travel.
   - The slider top sits 0.3 mm below the bezel top, in a slot long enough for its full travel.
   - The board itself is the measured 84.56 × 65.41 mm.
+- **Mounting holes:** measured 75 × 75 mm apart, 4 mm across. The 4C uses the same spacing. Chassis posts are now 6.6 mm across with M3 clearance, and the spigot grooves leave a 1.2 mm wall.
 
 ## Files per part
 - `<part>.3mf`: every colour body already aligned. In Bambu Studio, open it, choose "load as one object with multiple parts", then assign a filament to each part.
@@ -70,7 +71,7 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 - Thin spots are all intended: retaining lips, ornament straps, spindle walls (1.2 mm), and the 1.6 mm USB skin.
 
 ## Still needed
-- **3.4C mounting holes:** the 4 holes in the round back plate look about 70 mm apart in a photo. Measure them centre to centre, plus the hole size, before printing the **chassis**. The shells don't depend on them, because the spigot grooves cover the old 75 × 73 spacing.
+- **Mounting-hole thread:** the back-plate holes are 4 mm. The chassis posts are set up for M3 screws (3.4 mm clearance); check what thread the holes take.
 - Standoff height/thread (placeholder 9 mm, M2.5).
 - 6069 nose depth (to confirm the plug engages through the 1.6 mm skin).
 - SS07 lever travel (plunger length). PN532, Core1262 and PowerBoost holes.

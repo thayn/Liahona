@@ -50,9 +50,9 @@ S = dict(
     GASKET=0.5, LIP_T=2.4, LIP_OVER=2.0,   # glass covered 2 mm all round
     BOARD_W=84.6, BOARD_H=65.4, BOARD_DEPTH=9.0,   # 3.4C back board, measured 84.56 x 65.41
     CONN_OVERHANG=5.0,
-    STANDOFF_X=75.0, STANDOFF_Y=73.0,
+    STANDOFF_X=75.0, STANDOFF_Y=75.0,   # 3.4C back-plate holes, measured 75 x 75, 4 mm holes
     STANDOFF_H=9.0,          # !!! PLACEHOLDER - measure
-    STANDOFF_D=5.0, STANDOFF_SCREW_CLR=2.8,  # 2.8 = M2.5, 3.4 = M3
+    STANDOFF_D=5.0, STANDOFF_SCREW_CLR=3.4,  # 2.8 = M2.5, 3.4 = M3
 
     # bezel bayonet (upper-shell spigot = display seat) -------------------------
     SPIGOT_SEAT=1.6,         # glass rests 1.6 mm deep on the spigot top
@@ -87,7 +87,7 @@ S = dict(
     LID_LEAVES=8, LID_LEAF_LAT=(47.0, 76.0),
 
     # chassis / components -----------------------------------------------------------
-    DECK_T=3.0, DECK_R_IN=26.0, DECK_R_OUT=58.0, POST_OD=7.6, DECK_GAP=20.0,
+    DECK_T=3.0, DECK_R_IN=26.0, DECK_R_OUT=58.0, POST_OD=6.6, DECK_GAP=20.0,
     BATT=(69.0, 37.0, 18.0), POWERBOOST=(36.2, 22.9, 9.0), LIS3MDL=(25.6, 17.8, 3.0),
     LORA=(16.0, 22.0, 3.0), SHIFTER=(30.0, 20.0, 8.0),
     COMPASS_XY=(46.0, 0.0), COMPASS_RISE=10.0,
