@@ -522,12 +522,6 @@ void journey_tag(const char *uid)
         if (E.ntapped >= E.nmembers || (is_leader(p) && mi < 0)) complete_task();
         return;
     }
-    /* the ball judges these itself: a medallion never moves them on (a leader can still
-     * use Skip on the Field dashboard) */
-    if (is("question") || is("true_false") || is("name_that_hymn") || is("audio_clue") || is("intro")) {
-        if (p) flash(is("intro") || is("audio_clue") ? "Press Continue on the screen" : "Answer on the screen");
-        return;
-    }
     /* leader_approve, rest, and anything the ball can't judge: a leader's card moves on */
     if (p && is_leader(p)) { complete_task(); return; }
     if (p && !strcmp(task_type(), "leader_approve")) flash("A leader needs to tap their medallion");
