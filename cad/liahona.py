@@ -51,8 +51,9 @@ S = dict(
     BOARD_W=84.6, BOARD_H=65.4, BOARD_DEPTH=9.0,   # 3.4C back board, measured 84.56 x 65.41
     CONN_OVERHANG=5.0,
     STANDOFF_X=75.0, STANDOFF_Y=75.0,   # 3.4C back-plate holes, measured 75 x 75, 4 mm holes
-    STANDOFF_H=9.0,          # !!! PLACEHOLDER - measure
-    STANDOFF_D=5.0, STANDOFF_SCREW_CLR=3.4,  # 2.8 = M2.5, 3.4 = M3
+    STANDOFF_H=9.0,          # top part of each chassis post (behind the board)
+    STANDOFF_D=5.5,          # ... its diameter, slim to clear the board's corner notches
+    PEG_D=3.2, PEG_L=3.0,    # printed peg into each 4 mm back-plate hole (glue it)
 
     # bezel bayonet (upper-shell spigot = display seat) -------------------------
     SPIGOT_SEAT=1.6,         # glass rests 1.6 mm deep on the spigot top
@@ -844,9 +845,11 @@ def chassis():
     sx, sy = S["STANDOFF_X"] / 2, S["STANDOFF_Y"] / 2
     for x in (-sx, sx):
         for y in (-sy, sy):
+            # post up to the back plate, slimmer beside the board, then a peg into the hole
             body = body + Pos(x, y, (z0 + Z_STANDOFF_END) / 2) * Cylinder(S["POST_OD"] / 2, Z_STANDOFF_END - z0)
-            body = body - Pos(x, y, (z0 + Z_STANDOFF_END) / 2) * Cylinder(S["STANDOFF_SCREW_CLR"] / 2, 80)
-            body = body - Pos(x, y, z0 + 1.0) * Cylinder(2.9, 2.02)
+            zt = Z_PLATE - 0.1
+            body = body + Pos(x, y, (Z_STANDOFF_END + zt) / 2 - 0.01) * Cylinder(S["STANDOFF_D"] / 2, zt - Z_STANDOFF_END + 0.02)
+            body = body + Pos(x, y, zt + S["PEG_L"] / 2 - 0.01) * Cylinder(S["PEG_D"] / 2, S["PEG_L"] + 0.02)
     for (cx, cy, (l, w, _)) in ((0.0, bs(42.0), S["POWERBOOST"]), (-bs(46.0), 0.0, S["LORA"]), (0.0, -bs(40.0), S["SHIFTER"])):
         fr = Pos(cx, cy, z1 + 1.0) * Box(l + 0.6 + 2 * T, w + 0.6 + 2 * T, 2.0) - Pos(cx, cy, z1 + 1.0) * Box(l + 0.6, w + 0.6, 3.0)
         body = body + (fr & cyl(S["DECK_R_OUT"], z1 - 1, z1 + 5))
@@ -908,11 +911,10 @@ def plunger():
 # =============================================================================
 def components():
     c = {}
-    c["display"] = cyl(S["DISP_D"] / 2, Z_PLATE, Z_GLASS)
-    c["board"] = Pos(0, 0, (Z_BOARD + Z_PLATE) / 2 - 0.01) * Box(S["BOARD_W"], S["BOARD_H"], S["BOARD_DEPTH"] - 0.02)
     sx, sy = S["STANDOFF_X"] / 2, S["STANDOFF_Y"] / 2
-    c["standoffs"] = union([Pos(x, y, (Z_STANDOFF_END + Z_PLATE) / 2) * Cylinder(S["STANDOFF_D"] / 2, S["STANDOFF_H"])
-                            for x in (-sx, sx) for y in (-sy, sy)])
+    c["display"] = cyl(S["DISP_D"] / 2, Z_PLATE, Z_GLASS) - union(
+        [Pos(x, y, Z_PLATE) * Cylinder(2.0, 2 * S["PEG_L"] + 1) for x in (-sx, sx) for y in (-sy, sy)])
+    c["board"] = Pos(0, 0, (Z_BOARD + Z_PLATE) / 2 - 0.01) * Box(S["BOARD_W"], S["BOARD_H"], S["BOARD_DEPTH"] - 0.02)
     z0, z1 = chassis_z()
     bl, bw, bh = S["BATT"]
     c["battery"] = Pos(0, 0, z0 - 0.3 - bh / 2) * Box(bl, bw, bh)

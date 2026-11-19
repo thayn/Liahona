@@ -163,7 +163,7 @@ def main():
     allm = dict(meshes); allm.update(cm)
     REPORT["mesh"] = {n: {c: dict(watertight=bool(m.is_watertight), cm3=round(m.volume / 1000, 1))
                           for c, m in b.items()} for n, b in bodies.items()}
-    expected = {("[standoffs]", "[connector_keepout]"), ("[board]", "[standoffs]"),
+    expected = {("chassis", "[connector_keepout]"),
                 ("spindle", "[spindle_rod]"), ("lid_cap", "[spindle_rod]"), ("plunger", "[lid_switch]")}
     REPORT["collisions"] = collisions(allm, skip=expected)
     print("collisions:", REPORT["collisions"], flush=True)
@@ -182,7 +182,7 @@ def main():
     REPORT["lid_swing_overlap_mm3"] = swing
     print("swing:", swing, flush=True)
     # module insertion from the top
-    moving = ["chassis", "battery_tray", "[display]", "[board]", "[standoffs]", "[battery]",
+    moving = ["chassis", "battery_tray", "[display]", "[board]", "[battery]",
               "[powerboost]", "[lora]", "[shifter]", "[compass]"]
     static = ["upper_shell", "[gps]", "[led_strip]"]
     ins = []
