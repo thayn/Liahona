@@ -836,7 +836,8 @@ def base_cap():
     gold = gold - Pos(0, 0, (zs + zs + S["USB_GRIP"]) / 2) * Cylinder(S["USB_BORE"] / 2, S["USB_GRIP"])
     gold = gold - cyl(S["USB_NUT_D"] / 2, zs + S["USB_GRIP"], zc + 1)
     # cable channel on the cap top (open to the bed) toward +X
-    gold = gold - Pos(bs(22), 0, zc - 4) * Box(bs(44), 7, 8.02)
+    # (at 60 deg, between two inserts, so it doesn't swallow one)
+    gold = gold - Rot(0, 0, 60) * Pos(bs(22), 0, zc - 4) * Box(bs(44), 7, 8.02)
     for a in (0.0, 120.0, 240.0):
         gold = gold - Pos(bs(42) * math.cos(math.radians(a)), bs(42) * math.sin(math.radians(a)),
                           zc - S["INSERT_L"] / 2 + 0.01) * Cylinder(S["INSERT_D"] / 2, S["INSERT_L"])

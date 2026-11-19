@@ -17,16 +17,18 @@ The v3 fixes are in the 175 mm files too. Only four parts differ from the v2 pri
 | `out/175mm/bezel_ring.3mf` | Hinge pin entry; measured lid-switch and power-switch pockets |
 | `out/175mm/plunger.3mf` | Matches the new lid-switch pocket |
 | `out/175mm/chassis.3mf` | Posts at 75 × 75 mm with pegs for the back-plate holes |
+| `out/175mm/base_cap.3mf` | Optional: the cable channel no longer swallows one of the 3 inserts. The old one works with 2 screws |
 | `out/175mm/lid_ring.3mf` | Optional: the entry-side knuckle is a free fit. The old one works if you press the rod through it, or drill it out to 2.2 mm |
 
-Everything else (upper and lower shell, lid cap, base cap, battery tray, spindle) is unchanged.
+Everything else (upper and lower shell, lid cap, battery tray, spindle) is unchanged.
 
 ## What changed in v3
 - **160 mm ball** around the 115 mm glass. There's still a 9 mm shoulder round the glass.
-- **Hinge pin can go in now.** A 2.2 mm channel runs from the right-hand knuckle (seen from the front, at the back) out through the bezel wall. Close the lid, push a **32 mm piece of 2 mm brass rod** in from the right until it stops (it ends about 1 mm inside), then dab the hole with paint. The right lid knuckle is a free fit; the left one grips the rod (2.05 mm), so the rod can't walk out.
+- **Hinge pin can go in now.** A 2.2 mm channel runs from one side knuckle out through the bezel wall: on the right when you stand behind the ball, hinge toward you. Close the lid, push a **32 mm piece of 2 mm brass rod** in there until it stops (it ends about 1 mm inside), then dab the hole with paint. The entry-side lid knuckle is a free fit; the far one grips the rod (2.05 mm), so the rod can't walk out.
 - **Chassis boards** (PowerBoost, LoRa, compass) moved in, so the module still drops in through the smaller display spigot. The spigot has four shallow grooves where the chassis posts pass.
 - **GPS** sits steeper (65°) and a little lower to fit the smaller shoulder.
 - **Rivet strip** under the bezel kept at full height.
+- **Base cap:** the USB cable channel now runs at 60°, between two inserts. Before, it swallowed the insert at 0°.
 - **Lid switch from measurements:** 12.8 × 5.8 mm body, lever 3.83 mm above the body when free, clicks at 2.04 mm.
   - The switch sits lower, hanging about 1 mm below the bezel, to leave room above it for the free lever and the plunger collar.
   - With the lid shut, the lid pushes the plunger down until the lever is 0.5 mm past the click.
