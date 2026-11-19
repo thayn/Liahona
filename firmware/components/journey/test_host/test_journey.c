@@ -164,6 +164,24 @@ int main(int argc, char **argv)
     CHECK(journey_load(jj, NULL, 1, &h, err, sizeof err) == 0); view();
     CHECK(V.mode == JV_BRIEF);
 
+    /* short IDs from a USB keyboard reader (4 bytes, often byte-reversed) still match
+     * the ball's full 7-byte read */
+    {
+        const char *short_roster =
+            "{\"teams\":[{\"id\":\"t1\",\"name\":\"Moore\",\"ballId\":\"1\"}],"
+            "\"people\":[{\"id\":\"a\",\"name\":\"A\",\"role\":\"youth\",\"teamId\":\"t1\"},"
+                       "{\"id\":\"b\",\"name\":\"B\",\"role\":\"youth\",\"teamId\":\"t1\"},"
+                       "{\"id\":\"c\",\"name\":\"C\",\"role\":\"youth\",\"teamId\":\"t1\"}],"
+            "\"cards\":{\"A6FA4A04\":\"a\",\"044AFAA7\":\"b\",\"044afaa8\":\"c\"}}";
+        saved_stage = -1;
+        CHECK(journey_load(jj, short_roster, 1, &h, err, sizeof err) == 0); view();
+        CHECK(V.mode == JV_GATHER && strstr(V.status, "0 of 3"));
+        journey_tag("044AFAA6801234"); view(); CHECK(!strcmp(V.status, "A")); advance(5); CHECK(strstr(V.status, "1 of 3"));   /* reversed */
+        journey_tag("044AFAA7801234"); advance(5); CHECK(strstr(V.status, "2 of 3"));   /* in order */
+        journey_tag("0499FAA6801234"); advance(5); CHECK(strstr(V.status, "2 of 3"));   /* stranger */
+        journey_tag("044AFAA8801234"); view(); CHECK(V.mode == JV_BRIEF);           /* lower-case key */
+    }
+
     journey_unload();
     free(jj); free(rj);
     printf(fails ? "%d FAILED\n" : "journey host test passed\n", fails);

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include "cJSON.h"
 #include "journey.h"
 
@@ -104,11 +105,32 @@ static void save(void)
     if (E.h.save) E.h.save(E.id, E.stage, E.task, E.wrongs);
 }
 
+/* ------------------------------------------------------------------ uid matching */
+/* The ball reads the card's full ID (7 bytes for NTAG215, e.g. 044AFAA6xxxxxx).
+ * Many USB keyboard readers type only the first 4 bytes, often in reverse order
+ * (A6FA4A04). Accept: an exact match, the first 4 bytes, or those 4 bytes reversed. */
+static bool uid_match(const char *known, const char *tapped)
+{
+    if (!known || !tapped) return false;
+    if (strcasecmp(known, tapped) == 0) return true;
+    size_t kl = strlen(known), tl = strlen(tapped);
+    if (kl != 8 || tl < 8) return false;
+    if (tl > 8 && strncasecmp(known, tapped, 8) == 0) return true;      /* first 4 bytes, in order */
+    for (int i = 0; i < 4; i++)                                          /* reversed byte order */
+        if (strncasecmp(known + i * 2, tapped + (3 - i) * 2, 2) != 0) return false;
+    return true;
+}
+
 /* ------------------------------------------------------------------ roster */
 static const cJSON *person_for_uid(const char *uid)
 {
     if (!E.roster || !uid) return NULL;
     const char *pid = str(obj(E.roster, "cards"), uid);
+    if (!pid) {
+        const cJSON *c;
+        cJSON_ArrayForEach(c, obj(E.roster, "cards"))
+            if (cJSON_IsString(c) && uid_match(c->string, uid)) { pid = c->valuestring; break; }
+    }
     if (!pid) return NULL;
     const cJSON *p;
     cJSON_ArrayForEach(p, obj(E.roster, "people")) {
@@ -164,7 +186,7 @@ static const char *place_for_uid(const char *uid, int *station)
         i++;
         const cJSON *tag;
         cJSON_ArrayForEach(tag, obj(p, "tags")) {
-            if (cJSON_IsString(tag) && strcmp(tag->valuestring, uid) == 0) {
+            if (cJSON_IsString(tag) && uid_match(tag->valuestring, uid)) {
                 if (station) *station = i;
                 return p->string;
             }
@@ -440,7 +462,8 @@ void journey_tag(const char *uid)
     switch (E.mode) {
     case JV_GATHER:
         if (p) roll_call_tap(p);
-        else flash("Everyone taps their medallion first");
+        else if (place) flash("Everyone taps their medallion first");
+        else { char m[64]; snprintf(m, sizeof m, "Card %.20s isn't on the roster", uid); flash(m); }
         return;
 
     case JV_DARK:
