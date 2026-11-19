@@ -6,9 +6,20 @@
 | Size | Screen | Glass | Build |
 |---|---|---|---|
 | **160 mm** (default) | ESP32-P4-WIFI6-Touch-LCD-**3.4C**, 800 × 800 | 115 mm, 6 mm thick | `python3 liahona.py` → `out/` |
-| 175 mm | ESP32-P4-WIFI6-Touch-LCD-4C, 720 × 720 | 126 mm | `LIAHONA_SIZE=175 python3 liahona.py`. The last 175 mm print files are in `out/175mm/` |
+| 175 mm | ESP32-P4-WIFI6-Touch-LCD-4C, 720 × 720 | 126 mm | `LIAHONA_SIZE=175 python3 liahona.py` → `out/175mm/` |
 
 The ball's shape (radius, split heights, ornament, band, letters, insert circles, spindle) scales with the ball. Bought parts keep their real sizes: switches, battery, boards, magnets, the 2 mm hinge rod and the 3 mm spindle rod.
+
+### 175 mm ball already printed (v2)? Reprint these
+The v3 fixes are in the 175 mm files too. Only four parts differ from the v2 print:
+| Part | Why |
+|---|---|
+| `out/175mm/bezel_ring.3mf` | Hinge pin entry; measured lid-switch and power-switch pockets |
+| `out/175mm/plunger.3mf` | Matches the new lid-switch pocket |
+| `out/175mm/chassis.3mf` | Posts at 75 × 75 mm with pegs for the back-plate holes |
+| `out/175mm/lid_ring.3mf` | Optional: the entry-side knuckle is a free fit. The old one works if you press the rod through it, or drill it out to 2.2 mm |
+
+Everything else (upper and lower shell, lid cap, base cap, battery tray, spindle) is unchanged.
 
 ## What changed in v3
 - **160 mm ball** around the 115 mm glass. There's still a 9 mm shoulder round the glass.

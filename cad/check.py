@@ -7,7 +7,8 @@ from build123d import Pos, Rot, export_stl
 import liahona as L
 import render as RD
 
-OUT = Path(__file__).parent / "out"
+import liahona as _L
+OUT = _L.OUT_DIR
 REPORT = {}
 
 

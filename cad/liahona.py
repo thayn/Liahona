@@ -133,8 +133,12 @@ for _k in ("BAND_Z", "TRI_UPPER", "TRI_LOWER", "COMPASS_XY"):
 S["SPIGOT_R_IN"] = S["DISP_D"] / 2 - S["SPIGOT_SEAT"]
 S["LIP_R_IN"] = S["DISP_D"] / 2 - S["LIP_OVER"]
 S["DECK_R_OUT"] = min(S["DECK_R_OUT"], 58.0 * K)
-# keep a full rivet strip between the upper triangle row and the bezel joint
-S["TRI_UPPER"] = (S["TRI_UPPER"][0], min(S["TRI_UPPER"][1], S["Z_BEZEL"] - 3.6))
+# small ball: keep a full rivet strip between the upper triangle row and the bezel joint
+if K < 1:
+    S["TRI_UPPER"] = (S["TRI_UPPER"][0], min(S["TRI_UPPER"][1], S["Z_BEZEL"] - 3.6))
+RIVET_LIFT = 0.3 if K >= 1 else 0.0
+
+OUT_DIR = __import__("pathlib").Path(__file__).parent / ("out" if SIZE == "160" else f"out/{SIZE}mm")
 S.update(SIZES[SIZE].get("AFTER", {}))
 
 
@@ -518,7 +522,7 @@ def upper_shell():
     if engr:
         gold = gold.cut(*engr)
     for i in range(24):
-        gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2, R))
+        gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2 + RIVET_LIFT, R))
     # band: gold removed, tan field at the base surface, clear letters through
     gold = gold - (zslab(bz0, bz1) & (Sphere(R + 3) - Sphere(RI - 0.02)))
     gold = gold + raised_band(bz1, bz1 + fw) + raised_band(bz0 - fw, bz0)
@@ -983,8 +987,8 @@ def export_part(name, bodies, out):
 
 if __name__ == "__main__":
     import time, sys
-    out = Path(__file__).parent / "out"
-    out.mkdir(exist_ok=True)
+    out = OUT_DIR
+    out.mkdir(parents=True, exist_ok=True)
     print(summary())
     only = sys.argv[1:]
     for name, fn in PARTS.items():
