@@ -48,11 +48,12 @@ S = dict(
     # display ----------------------------------------------------------------
     DISP_D=126.0, DISP_T=6.0,          # DISP_D comes from SIZES
     GASKET=0.5, LIP_T=2.4, LIP_OVER=2.0,   # glass covered 2 mm all round
-    BOARD_W=85.0, BOARD_H=65.0, BOARD_DEPTH=9.0,
+    BOARD_W=84.6, BOARD_H=65.4, BOARD_DEPTH=9.0,   # 3.4C back board, measured 84.56 x 65.41
     CONN_OVERHANG=5.0,
-    STANDOFF_X=75.0, STANDOFF_Y=73.0,
-    STANDOFF_H=9.0,          # !!! PLACEHOLDER - measure
-    STANDOFF_D=5.0, STANDOFF_SCREW_CLR=2.8,  # 2.8 = M2.5, 3.4 = M3
+    STANDOFF_X=75.0, STANDOFF_Y=75.0,   # 3.4C back-plate holes, measured 75 x 75, 4 mm holes
+    STANDOFF_H=9.0,          # top part of each chassis post (behind the board)
+    STANDOFF_D=5.5,          # ... its diameter, slim to clear the board's corner notches
+    PEG_D=3.2, PEG_L=3.0,    # printed peg into each 4 mm back-plate hole (glue it)
 
     # bezel bayonet (upper-shell spigot = display seat) -------------------------
     SPIGOT_SEAT=1.6,         # glass rests 1.6 mm deep on the spigot top
@@ -87,7 +88,7 @@ S = dict(
     LID_LEAVES=8, LID_LEAF_LAT=(47.0, 76.0),
 
     # chassis / components -----------------------------------------------------------
-    DECK_T=3.0, DECK_R_IN=26.0, DECK_R_OUT=58.0, POST_OD=7.6, DECK_GAP=20.0,
+    DECK_T=3.0, DECK_R_IN=26.0, DECK_R_OUT=58.0, POST_OD=6.6, DECK_GAP=20.0,
     BATT=(69.0, 37.0, 18.0), POWERBOOST=(36.2, 22.9, 9.0), LIS3MDL=(25.6, 17.8, 3.0),
     LORA=(16.0, 22.0, 3.0), SHIFTER=(30.0, 20.0, 8.0),
     COMPASS_XY=(46.0, 0.0), COMPASS_RISE=10.0,
@@ -106,9 +107,16 @@ S = dict(
     PIN_ENTRY_SIDE=1,        # +1: pin goes in from the +X side (right, seen from the front)
     KNUCKLE_CENTER_W=12.0, KNUCKLE_GAP=0.4, KNUCKLE_SIDE_W=10.0,
     LID_OPEN_DEG=110.0,
-    LID_SW=(12.7, 5.75, 6.5), LID_SW_ANGLE=292.0,    # E-Switch SS07 + plunger
-    PLUNGER_D=2.0, PLUNGER_COLLAR=4.0,
-    PWR_SW_BODY=(9.0, 3.6, 3.5), PWR_SW_ACT=(1.5, 2.0), PWR_SW_TRAVEL=2.0,
+    LID_SW=(12.8, 5.8, 6.5), LID_SW_ANGLE=292.0,     # measured micro switch (L, W, body H) + plunger
+    LID_SW_FREE=3.83,        # lever tip above the body top, free (measured)
+    LID_SW_CLICK=2.04,       # ... where it clicks (measured)
+    LID_SW_OVERTRAVEL=0.5,   # lid pushes the lever this far past the click
+    LID_SW_SKIN=2.0,         # bezel top over the plunger pocket
+    PLUNGER_D=2.0, PLUNGER_COLLAR=4.0, PLUNGER_COLLAR_H=1.2,
+    PWR_SW_BODY=(9.1, 3.6, 3.5),     # measured 9.11 x 3.58 x 3.5
+    PWR_SW_ACT=(1.44, 1.78),         # slider width, height above the body (5.28 - 3.5), measured
+    PWR_SW_TRAVEL=3.71,              # measured slider range
+    PWR_SW_RECESS=0.3,               # slider top sits this far below the bezel top
     PWR_SW_ANGLE=45.0,       # under the lid, front-right (clear of the bayonet lugs)
     SPINDLE_ROD_D=3.0, SPINDLE_H=76.0, SPINDLE_WALL=1.2,
     SPINDLE_PRINTED_MIN_R=3.3, SPINDLE_DOWEL_DEPTH=10.0,   # one-piece printed spindle
@@ -125,8 +133,12 @@ for _k in ("BAND_Z", "TRI_UPPER", "TRI_LOWER", "COMPASS_XY"):
 S["SPIGOT_R_IN"] = S["DISP_D"] / 2 - S["SPIGOT_SEAT"]
 S["LIP_R_IN"] = S["DISP_D"] / 2 - S["LIP_OVER"]
 S["DECK_R_OUT"] = min(S["DECK_R_OUT"], 58.0 * K)
-# keep a full rivet strip between the upper triangle row and the bezel joint
-S["TRI_UPPER"] = (S["TRI_UPPER"][0], min(S["TRI_UPPER"][1], S["Z_BEZEL"] - 3.6))
+# small ball: keep a full rivet strip between the upper triangle row and the bezel joint
+if K < 1:
+    S["TRI_UPPER"] = (S["TRI_UPPER"][0], min(S["TRI_UPPER"][1], S["Z_BEZEL"] - 3.6))
+RIVET_LIFT = 0.3 if K >= 1 else 0.0
+
+OUT_DIR = __import__("pathlib").Path(__file__).parent / ("out" if SIZE == "160" else f"out/{SIZE}mm")
 S.update(SIZES[SIZE].get("AFTER", {}))
 
 
@@ -440,8 +452,19 @@ def lid_switch_pose():
     sl, sw, sh = S["LID_SW"]
     th = S["LID_SW_ANGLE"]
     r = BEZ_COLLAR_R_IN + 4.1        # just outside the spigot collar
-    z_top = S["Z_BEZEL"] + 0.5 + sh   # body sits just above the bezel bottom
+    # body top sits low enough that the free lever + plunger collar fit under the skin
+    z_top = Z_LID - S["LID_SW_SKIN"] - lid_sw_headroom()
     return th, r, z_top - sh / 2
+
+
+def lid_sw_headroom():
+    """Space above the switch body: free lever + plunger collar + slack."""
+    return S["LID_SW_FREE"] + S["PLUNGER_COLLAR_H"] + 0.3
+
+
+def plunger_low():
+    """Plunger bottom above the body top with the lid closed (lever past the click)."""
+    return S["LID_SW_CLICK"] - S["LID_SW_OVERTRAVEL"]
 
 
 def lid_switch_plane():
@@ -456,7 +479,7 @@ def pwr_switch_plane():
     t = math.radians(th)
     r = R_POCKET + T + 2.0           # just outside the display pocket wall
     bh = S["PWR_SW_BODY"][2]
-    z_top = Z_LID - T              # body top under a 2.4 mm skin
+    z_top = Z_LID - S["PWR_SW_ACT"][1] - S["PWR_SW_RECESS"]   # slider just below the bezel top
     return Plane(origin=(r * math.cos(t), r * math.sin(t), z_top - bh / 2),
                  x_dir=(-math.sin(t), math.cos(t), 0), z_dir=(0, 0, 1))
 
@@ -499,7 +522,7 @@ def upper_shell():
     if engr:
         gold = gold.cut(*engr)
     for i in range(24):
-        gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2, R))
+        gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2 + RIVET_LIFT, R))
     # band: gold removed, tan field at the base surface, clear letters through
     gold = gold - (zslab(bz0, bz1) & (Sphere(R + 3) - Sphere(RI - 0.02)))
     gold = gold + raised_band(bz1, bz1 + fw) + raised_band(bz0 - fw, bz0)
@@ -604,15 +627,18 @@ def bezel_ring():
     # lid switch pocket (open below) + plunger hole up to the bezel top
     sl, sw, sh = S["LID_SW"]
     pl = lid_switch_plane()
-    gold = gold - pl * Pos(0, 2.5, -(sh / 2 + 6) / 2 + sh / 2 + 0.2) * Box(sl + 0.4, sw + 0.4 + 5.0, sh + 6.4)
+    z_bot = S["Z_BEZEL"] - 2.0 - pl.origin.Z            # open below
+    z_top = sh / 2 + lid_sw_headroom()                    # room for the free lever + collar
+    gold = gold - pl * Pos(0, 2.5, (z_bot + z_top) / 2) * Box(sl + 0.4, sw + 0.4 + 5.0, z_top - z_bot)
     gold = gold - pl * Pos(0, 0, sh / 2) * Cylinder(S["PLUNGER_D"] / 2 + 0.2, 2 * (Z_LID - Z_PLATE) + 4)
     # power slide switch under the lid: body pocket open below, actuator slot on top
     bl, bw, bh = S["PWR_SW_BODY"]
     aw, ah = S["PWR_SW_ACT"]
     pp = pwr_switch_plane()
-    gold = gold - pp * Pos(0, 0, -(Z_LID - T - bh / 2 - zb) / 2 + bh / 2 + 0.1) * \
-        Box(bl + 0.4, bw + 0.4, Z_LID - T - zb + 2)
-    gold = gold - pp * Pos(0, 0, bh / 2 + T / 2) * Box(aw + S["PWR_SW_TRAVEL"] + 0.6, aw + 0.6, T + 2)
+    z_lo, z_hi = zb - 2.0 - pp.origin.Z, bh / 2 + 0.1     # body pocket, open below
+    gold = gold - pp * Pos(0, 0, (z_lo + z_hi) / 2) * Box(bl + 0.4, bw + 0.4, z_hi - z_lo)
+    # slot over the slider: its full travel, open through the bezel top
+    gold = gold - pp * Pos(0, 0, bh / 2 + 3.0) * Box(aw + S["PWR_SW_TRAVEL"] + 0.6, aw + 0.6, 6.0)
     return {"gold": gold}
 
 
@@ -810,7 +836,8 @@ def base_cap():
     gold = gold - Pos(0, 0, (zs + zs + S["USB_GRIP"]) / 2) * Cylinder(S["USB_BORE"] / 2, S["USB_GRIP"])
     gold = gold - cyl(S["USB_NUT_D"] / 2, zs + S["USB_GRIP"], zc + 1)
     # cable channel on the cap top (open to the bed) toward +X
-    gold = gold - Pos(bs(22), 0, zc - 4) * Box(bs(44), 7, 8.02)
+    # (at 60 deg, between two inserts, so it doesn't swallow one)
+    gold = gold - Rot(0, 0, 60) * Pos(bs(22), 0, zc - 4) * Box(bs(44), 7, 8.02)
     for a in (0.0, 120.0, 240.0):
         gold = gold - Pos(bs(42) * math.cos(math.radians(a)), bs(42) * math.sin(math.radians(a)),
                           zc - S["INSERT_L"] / 2 + 0.01) * Cylinder(S["INSERT_D"] / 2, S["INSERT_L"])
@@ -823,9 +850,11 @@ def chassis():
     sx, sy = S["STANDOFF_X"] / 2, S["STANDOFF_Y"] / 2
     for x in (-sx, sx):
         for y in (-sy, sy):
+            # post up to the back plate, slimmer beside the board, then a peg into the hole
             body = body + Pos(x, y, (z0 + Z_STANDOFF_END) / 2) * Cylinder(S["POST_OD"] / 2, Z_STANDOFF_END - z0)
-            body = body - Pos(x, y, (z0 + Z_STANDOFF_END) / 2) * Cylinder(S["STANDOFF_SCREW_CLR"] / 2, 80)
-            body = body - Pos(x, y, z0 + 1.0) * Cylinder(2.9, 2.02)
+            zt = Z_PLATE - 0.1
+            body = body + Pos(x, y, (Z_STANDOFF_END + zt) / 2 - 0.01) * Cylinder(S["STANDOFF_D"] / 2, zt - Z_STANDOFF_END + 0.02)
+            body = body + Pos(x, y, zt + S["PEG_L"] / 2 - 0.01) * Cylinder(S["PEG_D"] / 2, S["PEG_L"] + 0.02)
     for (cx, cy, (l, w, _)) in ((0.0, bs(42.0), S["POWERBOOST"]), (-bs(46.0), 0.0, S["LORA"]), (0.0, -bs(40.0), S["SHIFTER"])):
         fr = Pos(cx, cy, z1 + 1.0) * Box(l + 0.6 + 2 * T, w + 0.6 + 2 * T, 2.0) - Pos(cx, cy, z1 + 1.0) * Box(l + 0.6, w + 0.6, 3.0)
         body = body + (fr & cyl(S["DECK_R_OUT"], z1 - 1, z1 + 5))
@@ -872,9 +901,13 @@ def plunger():
     """Lid-switch plunger: 2 mm shaft + collar (captured in the switch pocket)."""
     pl = lid_switch_plane()
     sh = S["LID_SW"][2]
-    z_shaft_top = Z_LID - 0.05 - (pl.origin.Z + sh / 2) - 0.8  # shown pressed (lid closed); 0.6 proud when open
-    shaft = Pos(0, 0, 0.8 + z_shaft_top / 2) * Cylinder(S["PLUNGER_D"] / 2, z_shaft_top)
-    collar = Pos(0, 0, 0.8 + 0.6) * Cylinder(S["PLUNGER_COLLAR"] / 2, 1.2)
+    # shown pressed (lid closed); with the lid open the lever lifts it about
+    # LID_SW_FREE - plunger_low() above the bezel top
+    lo = plunger_low()
+    ln = Z_LID - 0.05 - (pl.origin.Z + sh / 2) - lo
+    shaft = Pos(0, 0, lo + ln / 2) * Cylinder(S["PLUNGER_D"] / 2, ln)
+    ch = S["PLUNGER_COLLAR_H"]
+    collar = Pos(0, 0, lo + ch / 2) * Cylinder(S["PLUNGER_COLLAR"] / 2, ch)
     return {"gold": pl * Pos(0, 0, sh / 2) * (shaft + collar)}
 
 
@@ -883,11 +916,10 @@ def plunger():
 # =============================================================================
 def components():
     c = {}
-    c["display"] = cyl(S["DISP_D"] / 2, Z_PLATE, Z_GLASS)
-    c["board"] = Pos(0, 0, (Z_BOARD + Z_PLATE) / 2 - 0.01) * Box(S["BOARD_W"], S["BOARD_H"], S["BOARD_DEPTH"] - 0.02)
     sx, sy = S["STANDOFF_X"] / 2, S["STANDOFF_Y"] / 2
-    c["standoffs"] = union([Pos(x, y, (Z_STANDOFF_END + Z_PLATE) / 2) * Cylinder(S["STANDOFF_D"] / 2, S["STANDOFF_H"])
-                            for x in (-sx, sx) for y in (-sy, sy)])
+    c["display"] = cyl(S["DISP_D"] / 2, Z_PLATE, Z_GLASS) - union(
+        [Pos(x, y, Z_PLATE) * Cylinder(2.0, 2 * S["PEG_L"] + 1) for x in (-sx, sx) for y in (-sy, sy)])
+    c["board"] = Pos(0, 0, (Z_BOARD + Z_PLATE) / 2 - 0.01) * Box(S["BOARD_W"], S["BOARD_H"], S["BOARD_DEPTH"] - 0.02)
     z0, z1 = chassis_z()
     bl, bw, bh = S["BATT"]
     c["battery"] = Pos(0, 0, z0 - 0.3 - bh / 2) * Box(bl, bw, bh)
@@ -956,8 +988,8 @@ def export_part(name, bodies, out):
 
 if __name__ == "__main__":
     import time, sys
-    out = Path(__file__).parent / "out"
-    out.mkdir(exist_ok=True)
+    out = OUT_DIR
+    out.mkdir(parents=True, exist_ok=True)
     print(summary())
     only = sys.argv[1:]
     for name, fn in PARTS.items():

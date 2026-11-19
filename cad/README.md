@@ -6,16 +6,42 @@
 | Size | Screen | Glass | Build |
 |---|---|---|---|
 | **160 mm** (default) | ESP32-P4-WIFI6-Touch-LCD-**3.4C**, 800 × 800 | 115 mm, 6 mm thick | `python3 liahona.py` → `out/` |
-| 175 mm | ESP32-P4-WIFI6-Touch-LCD-4C, 720 × 720 | 126 mm | `LIAHONA_SIZE=175 python3 liahona.py`. The last 175 mm print files are in `out/175mm/` |
+| 175 mm | ESP32-P4-WIFI6-Touch-LCD-4C, 720 × 720 | 126 mm | `LIAHONA_SIZE=175 python3 liahona.py` → `out/175mm/` |
 
 The ball's shape (radius, split heights, ornament, band, letters, insert circles, spindle) scales with the ball. Bought parts keep their real sizes: switches, battery, boards, magnets, the 2 mm hinge rod and the 3 mm spindle rod.
 
+### 175 mm ball already printed (v2)? Reprint these
+The v3 fixes are in the 175 mm files too. Only four parts differ from the v2 print:
+| Part | Why |
+|---|---|
+| `out/175mm/bezel_ring.3mf` | Hinge pin entry; measured lid-switch and power-switch pockets |
+| `out/175mm/plunger.3mf` | Matches the new lid-switch pocket |
+| `out/175mm/chassis.3mf` | Posts at 75 × 75 mm with pegs for the back-plate holes |
+| `out/175mm/base_cap.3mf` | Optional: the cable channel no longer swallows one of the 3 inserts. The old one works with 2 screws |
+| `out/175mm/lid_ring.3mf` | Optional: the entry-side knuckle is a free fit. The old one works if you press the rod through it, or drill it out to 2.2 mm |
+
+Everything else (upper and lower shell, lid cap, battery tray, spindle) is unchanged.
+
 ## What changed in v3
 - **160 mm ball** around the 115 mm glass. There's still a 9 mm shoulder round the glass.
-- **Hinge pin can go in now.** A 2.2 mm channel runs from the right-hand knuckle (seen from the front, at the back) out through the bezel wall. Close the lid, push a **32 mm piece of 2 mm brass rod** in from the right until it stops (it ends about 1 mm inside), then dab the hole with paint. The right lid knuckle is a free fit; the left one grips the rod (2.05 mm), so the rod can't walk out.
+- **Hinge pin can go in now.** A 2.2 mm channel runs from one side knuckle out through the bezel wall: on the right when you stand behind the ball, hinge toward you. Close the lid, push a **32 mm piece of 2 mm brass rod** in there until it stops (it ends about 1 mm inside), then dab the hole with paint. The entry-side lid knuckle is a free fit; the far one grips the rod (2.05 mm), so the rod can't walk out.
 - **Chassis boards** (PowerBoost, LoRa, compass) moved in, so the module still drops in through the smaller display spigot. The spigot has four shallow grooves where the chassis posts pass.
 - **GPS** sits steeper (65°) and a little lower to fit the smaller shoulder.
 - **Rivet strip** under the bezel kept at full height.
+- **Base cap:** the USB cable channel now runs at 60°, between two inserts. Before, it swallowed the insert at 0°.
+- **Lid switch from measurements:** 12.8 × 5.8 mm body, lever 3.83 mm above the body when free, clicks at 2.04 mm.
+  - The switch sits lower, hanging about 1 mm below the bezel, to leave room above it for the free lever and the plunger collar.
+  - With the lid shut, the lid pushes the plunger down until the lever is 0.5 mm past the click.
+  - With the lid open, the plunger stands about 2.3 mm above the bezel top.
+  - The plunger is a 5.7 mm shaft with a 4 mm collar. Put the plunger in before the switch.
+- **Power switch from measurements:** body 9.11 × 3.58 × 3.5 mm, slider 1.44 mm wide, 1.78 mm tall, 3.71 mm travel.
+  - The slider top sits 0.3 mm below the bezel top, in a slot long enough for its full travel.
+  - The board itself is the measured 84.56 × 65.41 mm.
+- **Mounting holes:** measured 75 × 75 mm apart, 4 mm across. The 4C uses the same spacing. There are no screws; the chassis is fixed with pegs and glue.
+  - Each chassis post (6.6 mm across) runs up to the back plate.
+  - Its top 9 mm, beside the board, is slimmer (5.5 mm) to clear the board's corner notches.
+  - It ends in a 3.2 × 3 mm peg that drops into the plate hole. Glue it with a dab of hot glue or epoxy.
+  - The spigot grooves leave a 1.2 mm wall.
 
 ## Files per part
 - `<part>.3mf`: every colour body already aligned. In Bambu Studio, open it, choose "load as one object with multiple parts", then assign a filament to each part.
@@ -62,9 +88,6 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 - Thin spots are all intended: retaining lips, ornament straps, spindle walls (1.2 mm), and the 1.6 mm USB skin.
 
 ## Still needed
-- **3.4C board:** the back board and its 4 mounting holes are assumed to match the 4C (85 × 65 mm board, holes 75 × 73 mm apart). Please measure. The connector keep-out (5 mm round the board) clips the spigot at the corners, so check that the USB-C plugs clear when you test-fit.
-- **Lid switch (SS07):** body L × W × H, and how far the lever sticks out (free and when it clicks). This sets the plunger length.
-- **Power switch:** body L × W × H, the actuator's width, height and travel, and any mounting legs.
 - Standoff height/thread (placeholder 9 mm, M2.5).
 - 6069 nose depth (to confirm the plug engages through the 1.6 mm skin).
 - SS07 lever travel (plunger length). PN532, Core1262 and PowerBoost holes.
