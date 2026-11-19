@@ -348,8 +348,10 @@ static void start_stage(int i)
 /* ------------------------------------------------------------------ load */
 int journey_load(const char *jj, const char *rj, int ball_id, const jhooks_t *hooks, char *err, size_t cap)
 {
+    static uint32_t loads;
     journey_unload();
     memset(&E, 0, sizeof(E));
+    E.version = ++loads << 20;          /* a reload always looks new to the screen */
     if (hooks) E.h = *hooks;
     E.loaded = true;
     E.mode = JV_ERROR;

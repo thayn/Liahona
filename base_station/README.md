@@ -34,5 +34,10 @@ Messages and commands to one ball are resent up to 3 times until the ball ACKs (
 
 The Liahona Manager's field dashboard will use this same JSON over USB.
 
+## Wi-Fi updates (v0.5)
+- `update all` (or `{"cmd":"update","to":"all"}`) tells the balls to update over Wi-Fi.
+- Balls report progress as `{"ev":"update","ball":3,"state":"files","done":1,"total":4,...}`. The states are wifi, check, files, firmware, reboot, done, current and failed; a failed report includes `"error"`.
+- Reflash the base station after pulling v0.5, because older base firmware drops these reports.
+
 ## Pins (Wio-SX1262 for XIAO)
 SCK 7, MISO 8, MOSI 9, NSS 41, RESET 42, BUSY 40, DIO1 39, RXEN 38, DIO2 drives the antenna switch, TCXO 1.8 V. These match Meshtastic's `seeed_xiao_s3` variant.
