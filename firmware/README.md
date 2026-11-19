@@ -90,6 +90,7 @@ With no `journey.json`, the ball stays on the compass. With a bad file, the jour
 - **Brief**, then the stage's tasks in order. Each tap on the ball gives a short tick.
 - **Supported tasks:** intro, question, true/false, check-in (tap the station's place tag), gather fragments (decoys darken the ball), testimony, leader approve, rest, scripted darken, audio clue and name that hymn.
 - **Other task types** show their text; a leader taps their medallion to move on.
+- **Questions and audio tasks** are judged on the screen. A medallion tap never moves them on, not even a leader's. After a wrong answer, the ball goes dark and then gives the same question again. To skip one, a leader uses **Skip** on the Field dashboard.
 - **Darkening:** wrong answers or a missed deadline darken the ball for the times in `penalties.darken_s`. With unity restore, all members tap to bring the light back; a visiting leader can also restore it.
 - **Hints** appear after `hint_after` wrong tries. Audio tasks have **Play again**.
 - **Compass button** appears when the current place has coordinates. Tap the compass to come back.

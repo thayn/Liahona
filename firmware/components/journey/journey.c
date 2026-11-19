@@ -59,6 +59,7 @@ typedef struct {
     bool     dark_scripted;
     char     dark_restore[8];       /* unity / leader / wait */
     int64_t  dark_until;            /* 0 = until restored */
+    int64_t  tag_quiet_until;       /* after the light returns, ignore taps until then */
 
     char     flash[96];
     int64_t  flash_until;
@@ -272,6 +273,7 @@ static void restore(void)
     if (E.h.leds) E.h.leds(0);
     if (E.dark_scripted) { E.mode = JV_TASK; complete_task(); return; }
     E.mode = JV_TASK;
+    E.tag_quiet_until = now() + 2000;                           /* ignore medallion taps for 2 s */
     if (E.deadline) E.deadline = now() + E.deadline_len_ms;      /* a fresh go at the clock */
     flash("The Liahona shines again");
     bump();
@@ -284,6 +286,7 @@ static void start_task(int t)
     E.task = t;
     E.mode = JV_TASK;
     E.task_start = now();
+    E.tag_quiet_until = 0;
     E.text_hints_used = E.audio_hints_used = E.replays_used = 0;
     E.hint[0] = 0;
     memset(E.frag_found, 0, sizeof(E.frag_found));
@@ -479,6 +482,7 @@ void journey_tag(const char *uid)
         return;
 
     case JV_TASK:
+        if (p && now() < E.tag_quiet_until) return;           /* the same medallions, still on the reader */
         break;
     default:
         return;
@@ -516,6 +520,12 @@ void journey_tag(const char *uid)
         int mi = member_index(p);
         if (mi >= 0 && !E.tapped[mi]) { E.tapped[mi] = true; E.ntapped++; flash(str(p, "name")); }
         if (E.ntapped >= E.nmembers || (is_leader(p) && mi < 0)) complete_task();
+        return;
+    }
+    /* the ball judges these itself: a medallion never moves them on (a leader can still
+     * use Skip on the Field dashboard) */
+    if (is("question") || is("true_false") || is("name_that_hymn") || is("audio_clue") || is("intro")) {
+        if (p) flash(is("intro") || is("audio_clue") ? "Press Continue on the screen" : "Answer on the screen");
         return;
     }
     /* leader_approve, rest, and anything the ball can't judge: a leader's card moves on */
