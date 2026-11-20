@@ -98,7 +98,7 @@ static void usb_reader_task(void *arg)
 static void hello(void)
 {
     usb_printf("{\"ev\":\"hello\",\"fw\":\"liahona-base %s\",\"freq\":%lu,\"bw\":%u,\"sf\":%u,"
-               "\"power\":%d,\"tcxo\":%s}\n", "0.1.0", (unsigned long)RADIO_FREQ_HZ, RADIO_BW_KHZ,
+               "\"power\":%d,\"tcxo\":%s}\n", "0.2.0", (unsigned long)RADIO_FREQ_HZ, RADIO_BW_KHZ,
                RADIO_SF, s_radio.cfg.power_dbm, s_radio.tcxo_used ? "true" : "false");
 }
 

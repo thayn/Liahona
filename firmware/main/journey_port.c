@@ -17,6 +17,7 @@
 #include "liahona.h"
 #include "journey.h"
 #include "journey_port.h"
+#include "update.h"
 #include "liahona_proto.h"
 
 static const char *TAG = "journey";
@@ -106,13 +107,20 @@ static void apply_dim(bool dim)
     else { bsp_display_backlight_on(); leds_set_mode(0); }
 }
 
-static void journey_task(void *arg)
+static volatile bool s_reload;
+void journey_request_reload(void) { s_reload = true; }
+
+/* (Re)load the journey from the SD card. Progress is kept in NVS, so the same
+ * journey carries on where it was; a different one starts at the beginning. */
+static void load_from_sd(void)
 {
-    /* The SD card is mounted before this task starts. */
+    LOCK();
+    if (journey_loaded()) journey_unload();
+    UNLOCK();
     char *jj = read_file(CONTENT_JOURNEY, 512 * 1024);
     if (!jj) {
         ESP_LOGI(TAG, "no %s on the SD card: compass and self-test only", CONTENT_JOURNEY);
-        vTaskDelete(NULL);
+        STATE_LOCK(); g_state.journey_active = false; STATE_UNLOCK();
         return;
     }
     char *rj = read_file(CONTENT_ROSTER, 256 * 1024);
@@ -128,12 +136,19 @@ static void journey_task(void *arg)
     if (e) ESP_LOGE(TAG, "%s", err);
     else ESP_LOGI(TAG, "journey loaded for ball %d", id);
     STATE_LOCK(); g_state.journey_active = (e == 0); STATE_UNLOCK();
+}
+
+static void journey_task(void *arg)
+{
+    /* The SD card is mounted before this task starts. */
+    load_from_sd();
 
     uint32_t tap_seen, cmd_seen;
     STATE_LOCK(); tap_seen = g_state.nfc_tap_seq; cmd_seen = g_state.leader_cmd_count; STATE_UNLOCK();
 
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(100));
+        if (s_reload) { s_reload = false; load_from_sd(); }
         char uid[24] = "";
         uint8_t cmd = 0, arg8 = 0;
         bool tap = false, got_cmd = false;
@@ -144,10 +159,11 @@ static void journey_task(void *arg)
 
         if (got_cmd && cmd == LP_CMD_DIM) apply_dim(true);
         else if (got_cmd && cmd == LP_CMD_RESTORE) apply_dim(false);
+        else if (got_cmd && cmd == LP_CMD_UPDATE) update_start();
 
         LOCK();
         if (tap) { ESP_LOGI(TAG, "tap %s", uid); journey_tag(uid); }
-        if (got_cmd && cmd != LP_CMD_DIM && cmd != LP_CMD_RESTORE) journey_leader(cmd, arg8);
+        if (got_cmd && cmd != LP_CMD_DIM && cmd != LP_CMD_RESTORE && cmd != LP_CMD_UPDATE) journey_leader(cmd, arg8);
         journey_tick();
         jv_view_t v;
         journey_view(&v);

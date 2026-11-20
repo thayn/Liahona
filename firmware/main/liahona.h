@@ -65,6 +65,10 @@ typedef struct {
     uint32_t leader_cmd_count;
     uint8_t  stage;                    /* journey step (set by the journey engine) */
     bool     journey_active;           /* a journey is loaded and running */
+
+    /* Wi-Fi update (update.c) */
+    uint8_t  update_state;             /* lp_upd_state_t, 0 = never run */
+    char     update_text[64];
     bool     dimmed;                   /* leader "dim" command */
 
     /* Lid switch */
@@ -110,6 +114,7 @@ void nfc_start(i2c_master_bus_handle_t bus);
 void lora_start(void);
 void lora_send_status_now(void);                  /* queue a status report (if TX enabled) */
 void lora_send_checkin(const uint8_t *uid, int uid_len, uint8_t station);
+void lora_send_update(uint8_t state, uint8_t detail, uint8_t done, uint8_t total, const char *version);
 void leds_start(void);
 void leds_set_mode(int mode);                     /* 0 idle glow, 1 test cycle, 2 off, 3 pulse (then glow) */
 void inputs_start(void);                          /* lid switch + battery */

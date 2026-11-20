@@ -6,11 +6,14 @@
  */
 #include <string.h>
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_ota_ops.h"
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
 #include "bsp/esp-bsp.h"
 #include "liahona.h"
+#include "update.h"
 
 static const char *TAG = "liahona";
 
@@ -67,4 +70,9 @@ void app_main(void)
     journey_start();         /* reads liahona/journey.json + roster.json from the SD card */
 
     ESP_LOGI(TAG, "All modules started");
+
+    /* After a Wi-Fi firmware update, keep the new firmware once it has run for a bit.
+     * If it crashes before this, the bootloader goes back to the old one. */
+    vTaskDelay(pdMS_TO_TICKS(20000));
+    update_confirm_boot();
 }

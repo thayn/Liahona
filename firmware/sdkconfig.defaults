@@ -26,3 +26,14 @@ CONFIG_FATFS_MAX_LFN=255
 
 # ---- Logging ----
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# ---- Wi-Fi updates (v0.5) ----
+# Wi-Fi comes from the ESP32-C6 on the board (ESP-Hosted over SDIO, default P4 pins)
+CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
+CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE=y
+# New firmware runs on trial; if it doesn't confirm itself, the old one comes back
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+# The camp laptop serves over plain http on the camp Wi-Fi
+CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y

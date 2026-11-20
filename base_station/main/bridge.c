@@ -231,6 +231,16 @@ size_t bridge_format_rx(const lp_packet_t *p, int16_t rssi, float snr, char *o, 
                      p->from, p->seq, uid, p->u.checkin.station);
         break;
     }
+    case LP_UPDATE: {
+        char ver[2 * LP_VER_MAX + 8];
+        bridge_json_escape(p->u.update.version, ver, sizeof(ver));
+        n = snprintf(o, cap, "{\"ev\":\"update\",\"ball\":%u,\"state\":\"%s\",\"detail\":%u,\"done\":%u,\"total\":%u,\"version\":\"%s\",",
+                     p->from, lp_upd_state_name(p->u.update.state), p->u.update.detail,
+                     p->u.update.done, p->u.update.total, ver);
+        if (p->u.update.state == LP_UPD_FAILED && n > 0 && (size_t)n < cap)
+            n += snprintf(o + n, cap - n, "\"error\":\"%s\",", lp_upd_err_name(p->u.update.detail));
+        break;
+    }
     case LP_ACK:
         n = snprintf(o, cap, "{\"ev\":\"ack\",\"ball\":%u,\"ack_seq\":%u,\"ok\":%s,",
                      p->from, p->u.ack.acked_seq, p->u.ack.ok ? "true" : "false");

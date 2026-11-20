@@ -33,6 +33,17 @@ size_t lp_encode(const lp_packet_t *p, uint8_t *buf, size_t cap)
         break;
     case LP_PING:
         break;
+    case LP_UPDATE: {
+        size_t vl = 0;
+        while (vl < LP_VER_MAX && p->u.update.version[vl]) vl++;
+        tmp[n++] = p->u.update.state;
+        tmp[n++] = p->u.update.detail;
+        tmp[n++] = p->u.update.done;
+        tmp[n++] = p->u.update.total;
+        tmp[n++] = (uint8_t)vl;
+        memcpy(tmp + n, p->u.update.version, vl); n += vl;
+        break;
+    }
     case LP_MESSAGE: {
         size_t len = p->u.message.len;
         if (len > LP_TEXT_MAX) return 0;
@@ -82,6 +93,15 @@ bool lp_decode(const uint8_t *b, size_t len, lp_packet_t *p)
         return true;
     case LP_PING:
         return true;
+    case LP_UPDATE:
+        if (n < 5 || d[4] > LP_VER_MAX || n < (size_t)d[4] + 5) return false;
+        p->u.update.state = d[0];
+        p->u.update.detail = d[1];
+        p->u.update.done = d[2];
+        p->u.update.total = d[3];
+        memcpy(p->u.update.version, d + 5, d[4]);
+        p->u.update.version[d[4]] = '\0';
+        return true;
     case LP_MESSAGE:
         if (n < 1 || d[0] > LP_TEXT_MAX || n < (size_t)d[0] + 1) return false;
         p->u.message.len = d[0];
@@ -109,20 +129,30 @@ const char *lp_type_name(uint8_t t)
     case LP_STATUS: return "status";   case LP_CHECKIN: return "checkin";
     case LP_PING: return "ping";       case LP_MESSAGE: return "msg";
     case LP_COMMAND: return "command"; case LP_ACK: return "ack";
+    case LP_UPDATE: return "update";
     default: return "unknown";
     }
 }
 
-static const char *const CMD_NAMES[] = { "", "unlock", "skip", "dim", "restore", "stage" };
+static const char *const CMD_NAMES[] = { "", "unlock", "skip", "dim", "restore", "stage", "update" };
+#define CMD_LAST 6
 
 const char *lp_cmd_name(uint8_t c)
 {
-    return (c >= 1 && c <= 5) ? CMD_NAMES[c] : "unknown";
+    return (c >= 1 && c <= CMD_LAST) ? CMD_NAMES[c] : "unknown";
 }
+
+static const char *const UPD_NAMES[] = { "", "wifi", "check", "files", "firmware", "done", "current", "failed", "reboot" };
+const char *lp_upd_state_name(uint8_t s) { return (s >= 1 && s <= 8) ? UPD_NAMES[s] : "unknown"; }
+
+static const char *const UPE_NAMES[] = { "", "no wifi.json on the SD card", "couldn't join Wi-Fi",
+    "Manager unreachable", "ball key refused", "download failed", "SD card write failed",
+    "firmware failed", "already updating" };
+const char *lp_upd_err_name(uint8_t e) { return (e >= 1 && e <= 8) ? UPE_NAMES[e] : "unknown"; }
 
 int lp_cmd_from_name(const char *name)
 {
-    for (int i = 1; i <= 5; i++)
+    for (int i = 1; i <= CMD_LAST; i++)
         if (strcmp(name, CMD_NAMES[i]) == 0) return i;
     return -1;
 }
