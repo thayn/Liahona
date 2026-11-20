@@ -91,6 +91,10 @@ int main(int argc, char **argv)
     CHECK(V.mode == JV_DARK && V.countdown_s == 30 && led_mode == 2);
     journey_tag(ANN); journey_tag(BEN); view(); CHECK(V.mode == JV_DARK && strstr(V.status, "2 of 3"));
     journey_tag(CAL); view(); CHECK(V.mode == JV_TASK && !strcmp(V.kind, "question"));   /* unity restore */
+    /* the same question again: the last tap (a team leader's card, still on the reader)
+     * mustn't skip it straight away; after 2 s a leader's tap may skip on purpose */
+    journey_tag(CAL); view(); CHECK(V.mode == JV_TASK && !strcmp(V.kind, "question"));
+    advance(1); journey_tag(CAL); view(); CHECK(!strcmp(V.kind, "question"));
     journey_choice(1); view();
     CHECK(!strcmp(V.kind, "checkin") && strstr(V.body, "lot corner"));
     journey_tag(place_tag(SHED)); view(); CHECK(strstr(V.status, "Not this place"));

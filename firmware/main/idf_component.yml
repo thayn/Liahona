@@ -7,3 +7,6 @@ dependencies:
   lvgl/lvgl: "~9.3.0"
   # WS2812-style LED strip driver (band LEDs)
   espressif/led_strip: "^3.0.0"
+  # Wi-Fi through the board's ESP32-C6 co-processor (SDIO, ESP-Hosted), for updates
+  espressif/esp_wifi_remote: "*"
+  espressif/esp_hosted: "*"

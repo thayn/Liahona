@@ -1,4 +1,4 @@
-# Liahona ball firmware — v0.4.0 (milestone 3: journey engine)
+# Liahona ball firmware — v0.5.1 (milestone 4: Wi-Fi updates, compass calibration)
 
 Foundation + bench self-test for the Waveshare **ESP32-P4-WIFI6-Touch-LCD-4C** (4", 720×720).
 Built and checked with **ESP-IDF v6.1** (target `esp32p4`). The journey screens (v0.4) are new and have not run on hardware yet.
@@ -90,6 +90,7 @@ With no `journey.json`, the ball stays on the compass. With a bad file, the jour
 - **Brief**, then the stage's tasks in order. Each tap on the ball gives a short tick.
 - **Supported tasks:** intro, question, true/false, check-in (tap the station's place tag), gather fragments (decoys darken the ball), testimony, leader approve, rest, scripted darken, audio clue and name that hymn.
 - **Other task types** show their text; a leader taps their medallion to move on.
+- **After a wrong answer**, the ball goes dark and then gives the same question again. A leader can skip it by tapping their medallion, or with **Skip** on the Field dashboard. For 2 s after the light comes back, medallion taps are ignored, so the last restoring tap can't skip by accident.
 - **Darkening:** wrong answers or a missed deadline darken the ball for the times in `penalties.darken_s`. With unity restore, all members tap to bring the light back; a visiting leader can also restore it.
 - **Hints** appear after `hint_after` wrong tries. Audio tasks have **Play again**.
 - **Compass button** appears when the current place has coordinates. Tap the compass to come back.
@@ -103,7 +104,56 @@ Progress (stage, task, wrong count) is kept in NVS. After a power cycle the ball
 
 Host test for the engine (no hardware): `make -C components/journey/test_host && components/journey/test_host/test_journey`.
 
+## Wi-Fi updates (v0.5)
+
+Once a ball is closed up, it can update itself: new journey, roster, audio and firmware, all from the Manager over Wi-Fi. LoRa only carries the "go" and the progress reports.
+
+### One-time setup
+1. **First flash by USB.** v0.5 turns on firmware rollback, which changes the bootloader, so flash it once over USB as usual.
+   - Delete `firmware/sdkconfig` before you build, so the new Wi-Fi settings in `sdkconfig.defaults` are picked up. Then run a full clean and build.
+2. **Manager → Settings → Balls over Wi-Fi:**
+   - Choose the Journey for the balls.
+   - Make a ball key.
+   - Type the Wi-Fi network name and password, then **Download wifi.json**.
+   - Use a 2.4 GHz network (a phone hotspot works); the balls can't see 5 GHz.
+3. Copy `wifi.json` to `liahona/` on every ball's SD card, next to `ball_id.txt`.
+4. **Reflash the base station** (`base_station/`). It needs v0.5 of the radio protocol to pass on Update and the balls' progress.
+
+### Updating
+- **Firmware:** build as usual, then upload `firmware/build/liahona_fw.bin` on the same Settings panel. Bump `PROJECT_VER` in `firmware/CMakeLists.txt` for each release; balls install it only if the version differs from what they run.
+- **Field tab → Update**, for one ball or All. Each ball then:
+  - joins Wi-Fi;
+  - downloads only what changed: `journey.json`, `roster.json`, `media/*.mp3|wav`. Each file goes to a temp file and is renamed into place. What it has is remembered in `liahona/.sync.json`;
+  - reloads the journey. Progress carries on if it's the same journey;
+  - installs new firmware into the spare app slot and restarts.
+- The Field table shows each ball's progress, then "Updated", "Already up to date" or the reason it failed.
+- **On the ball:** long-press for the self-test page and tap the **Firmware** row. It runs the same update and shows its progress there.
+- **Safety:** new firmware runs on trial. If it crashes in its first 20 seconds, the bootloader goes back to the previous firmware on the next start.
+
+### If it fails
+| Field tab says | Fix |
+|---|---|
+| no wifi.json on the SD card | Copy `wifi.json` to `liahona/` |
+| couldn't join Wi-Fi | Check the network name and password, that it's 2.4 GHz, and that the hotspot is on |
+| Manager unreachable | Check the Manager address in wifi.json. A laptop Manager needs its Wi-Fi address (e.g. `http://192.168.1.20:3000`), not localhost |
+| ball key refused | A new key was made. Download wifi.json again and copy it to the balls |
+| download failed | Weak Wi-Fi. Press Update again; finished files are kept |
+
+Not yet tested on hardware: the ESP32-C6 link (ESP-Hosted over SDIO, the P4's default pins) alongside the SD card. If Wi-Fi doesn't start, send the boot log.
+
+## Compass calibration (v0.5.1)
+Do this **after** the ball is fully assembled. The battery, speaker magnet and screws bend the magnetic field, and calibration corrects for them. Redo it if you change anything inside the ball. Keep it away from steel tables, laptops and cars while you do it.
+
+1. Long-press for the self-test page, then tap the **Compass** row.
+2. Hold the ball level and turn it slowly, two full turns. The dots round the edge fill in. When they're all gold it beeps and says **Done**.
+3. Tap **Save**.
+4. Turn the ball clockwise. The number should go **up**. If it goes down, tap **Flip**.
+5. Point the top of the screen at north (use your phone's compass), then tap **Set N**. The number should read 0°.
+6. Tap **Back**. The Compass row now says "calibrated".
+
+The calibration is kept in the ball's flash (NVS), so it survives power-off, SD card swaps and Wi-Fi updates. It is erased by **Erase Flash**. **Again** starts over.
+
 ## Known limits (next milestones)
-- **Compass:** uncalibrated and not tilt-compensated. Calibration is coming. Set `MAG_DECLINATION_DEG` in `board_pins.h` for your camp, so GPS bearings and the compass agree.
+- **Compass:** not tilt-compensated, so it reads best with the ball roughly level. Set `MAG_DECLINATION_DEG` in `board_pins.h` for your camp, so GPS bearings and the compass agree.
 - **LoRa:** tested both ways to about 300 m with the stock antennas. Leader text messages are stored but not shown on the journey screen yet.
-- **Not in this version yet:** video playback, the remaining task types, Wi-Fi via the ESP32-C6, and OTA updates. The partitions are already set up for OTA.
+- **Not in this version yet:** video playback and the remaining task types.

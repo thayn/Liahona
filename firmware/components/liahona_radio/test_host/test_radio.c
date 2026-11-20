@@ -185,6 +185,20 @@ static void test_bridge(void)
     bridge_format_rx(&st, -80, 9.5f, line, sizeof line);
     printf("%s", line);
     CHECK(strstr(line, "\"lat\":46.6612345") && strstr(line, "\"lid\":\"open\"") && strstr(line, "\"rssi\":-80"));
+    /* update progress: encode, decode, format */
+    {
+        lp_packet_t u = { .type = LP_UPDATE, .from = 3, .to = LP_ID_BASE, .seq = 9 }, d;
+        u.u.update.state = LP_UPD_FAILED; u.u.update.detail = LP_UPE_WIFI; u.u.update.done = 1; u.u.update.total = 4;
+        strcpy(u.u.update.version, "0.5.0");
+        uint8_t b[LP_MAX_LEN]; size_t bn = lp_encode(&u, b, sizeof b);
+        CHECK(bn == LP_HDR_LEN + 5 + 5 && lp_decode(b, bn, &d) && d.u.update.state == LP_UPD_FAILED && !strcmp(d.u.update.version, "0.5.0"));
+        CHECK(!lp_wants_ack(&d));
+        bridge_format_rx(&d, -90, 3.0f, line, sizeof line);
+        printf("%s", line);
+        CHECK(strstr(line, "\"ev\":\"update\"") && strstr(line, "\"state\":\"failed\"") && strstr(line, "join Wi-Fi"));
+        CHECK(bridge_parse_line("update all", &c, err, sizeof err) == 0 && c.cmd == LP_CMD_UPDATE && c.to == 255);
+        CHECK(bridge_parse_line("{\"cmd\":\"update\",\"to\":4}", &c, err, sizeof err) == 0 && c.cmd == LP_CMD_UPDATE && c.to == 4);
+    }
     char esc[64]; bridge_json_escape("a\"b\\c\n", esc, sizeof esc);
     CHECK(strcmp(esc, "a\\\"b\\\\c\\n") == 0);
 }

@@ -59,6 +59,7 @@ typedef struct {
     bool     dark_scripted;
     char     dark_restore[8];       /* unity / leader / wait */
     int64_t  dark_until;            /* 0 = until restored */
+    int64_t  tag_quiet_until;       /* after the light returns, ignore taps until then */
 
     char     flash[96];
     int64_t  flash_until;
@@ -272,6 +273,7 @@ static void restore(void)
     if (E.h.leds) E.h.leds(0);
     if (E.dark_scripted) { E.mode = JV_TASK; complete_task(); return; }
     E.mode = JV_TASK;
+    E.tag_quiet_until = now() + 2000;                           /* ignore medallion taps for 2 s */
     if (E.deadline) E.deadline = now() + E.deadline_len_ms;      /* a fresh go at the clock */
     flash("The Liahona shines again");
     bump();
@@ -284,6 +286,7 @@ static void start_task(int t)
     E.task = t;
     E.mode = JV_TASK;
     E.task_start = now();
+    E.tag_quiet_until = 0;
     E.text_hints_used = E.audio_hints_used = E.replays_used = 0;
     E.hint[0] = 0;
     memset(E.frag_found, 0, sizeof(E.frag_found));
@@ -348,8 +351,10 @@ static void start_stage(int i)
 /* ------------------------------------------------------------------ load */
 int journey_load(const char *jj, const char *rj, int ball_id, const jhooks_t *hooks, char *err, size_t cap)
 {
+    static uint32_t loads;
     journey_unload();
     memset(&E, 0, sizeof(E));
+    E.version = ++loads << 20;          /* a reload always looks new to the screen */
     if (hooks) E.h = *hooks;
     E.loaded = true;
     E.mode = JV_ERROR;
@@ -479,6 +484,7 @@ void journey_tag(const char *uid)
         return;
 
     case JV_TASK:
+        if (p && now() < E.tag_quiet_until) return;           /* the same medallions, still on the reader */
         break;
     default:
         return;

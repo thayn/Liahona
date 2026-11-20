@@ -19,7 +19,8 @@ typedef struct {
     /* Compass (LIS3MDL) */
     test_result_t mag;
     float    mag_x, mag_y, mag_z;      /* gauss */
-    float    heading_deg;              /* 0 = magnetic north, uncalibrated */
+    float    heading_deg;              /* 0 = magnetic north, after calibration */
+    bool     mag_cal_valid;            /* a saved calibration is in use */
 
     /* GPS (PA1010D) */
     test_result_t gps;
@@ -65,6 +66,10 @@ typedef struct {
     uint32_t leader_cmd_count;
     uint8_t  stage;                    /* journey step (set by the journey engine) */
     bool     journey_active;           /* a journey is loaded and running */
+
+    /* Wi-Fi update (update.c) */
+    uint8_t  update_state;             /* lp_upd_state_t, 0 = never run */
+    char     update_text[64];
     bool     dimmed;                   /* leader "dim" command */
 
     /* Lid switch */
@@ -105,11 +110,29 @@ void ui_start(void);
 void ui_compass_tick(const liahona_state_t *s);   /* ui_compass.c */
 
 void sensors_start(i2c_master_bus_handle_t bus);   /* I2C scan + compass task */
+
+/* Compass calibration (sensors.c), saved in NVS namespace "compass". */
+#define MAG_CAL_VERSION 1
+typedef struct {
+    uint8_t version;
+    uint8_t valid;                     /* offsets/scales below are measured */
+    uint8_t mirror;                    /* heading runs the wrong way: flip it */
+    uint8_t _pad;
+    float   off[2];                    /* hard-iron centre, gauss (x, y) */
+    float   scale[2];                  /* soft-iron stretch (x, y) */
+    float   north_deg;                 /* added last: lines the ball's front up with north */
+} mag_cal_t;
+void  mag_cal_get(mag_cal_t *out);
+bool  mag_cal_set(const mag_cal_t *c);             /* applies now and saves; false if NVS failed */
+float mag_heading(float gx, float gy, const mag_cal_t *c);
+void  ui_cal_build(void);                          /* ui_cal.c */
+void  ui_cal_show(void);
 void gps_start(i2c_master_bus_handle_t bus);
 void nfc_start(i2c_master_bus_handle_t bus);
 void lora_start(void);
 void lora_send_status_now(void);                  /* queue a status report (if TX enabled) */
 void lora_send_checkin(const uint8_t *uid, int uid_len, uint8_t station);
+void lora_send_update(uint8_t state, uint8_t detail, uint8_t done, uint8_t total, const char *version);
 void leds_start(void);
 void leds_set_mode(int mode);                     /* 0 idle glow, 1 test cycle, 2 off, 3 pulse (then glow) */
 void inputs_start(void);                          /* lid switch + battery */

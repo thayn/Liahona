@@ -1,12 +1,15 @@
 /*
  * I2C bus scan + LIS3MDL magnetometer (compass).
  *
- * Heading is uncalibrated and not tilt-compensated: good enough to prove the
- * part works. Hard-iron calibration (spin the ball once) comes later.
+ * Heading is not tilt-compensated, so keep the ball roughly level.
+ * Calibration (Compass row on the self-test -> turn the ball) removes the
+ * pull of the battery, speaker magnet and screws. It is kept in NVS, so it
+ * survives power-off, SD card changes and Wi-Fi firmware updates.
  */
 #include <math.h>
 #include <string.h>
 #include "esp_log.h"
+#include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "board_pins.h"
@@ -25,6 +28,58 @@ static const char *TAG = "sensors";
 #define MAG_LSB_PER_G  6842.0f   /* +/-4 gauss range */
 
 static i2c_master_bus_handle_t s_bus;
+static mag_cal_t s_cal = { .scale = { 1, 1 } };
+static portMUX_TYPE s_cal_mux = portMUX_INITIALIZER_UNLOCKED;
+
+static void cal_load(void)
+{
+    nvs_handle_t h;
+    mag_cal_t c;
+    size_t n = sizeof(c);
+    if (nvs_open("compass", NVS_READONLY, &h) != ESP_OK) return;
+    if (nvs_get_blob(h, "cal", &c, &n) == ESP_OK && n == sizeof(c) && c.version == MAG_CAL_VERSION) {
+        s_cal = c;
+        ESP_LOGI(TAG, "compass cal: off %.3f %.3f  scale %.3f %.3f  north %+.1f  %s",
+                 c.off[0], c.off[1], c.scale[0], c.scale[1], c.north_deg, c.mirror ? "mirrored" : "");
+    }
+    nvs_close(h);
+}
+
+void mag_cal_get(mag_cal_t *out)
+{
+    taskENTER_CRITICAL(&s_cal_mux); *out = s_cal; taskEXIT_CRITICAL(&s_cal_mux);
+}
+
+bool mag_cal_set(const mag_cal_t *c)
+{
+    mag_cal_t v = *c;
+    v.version = MAG_CAL_VERSION;
+    taskENTER_CRITICAL(&s_cal_mux); s_cal = v; taskEXIT_CRITICAL(&s_cal_mux);
+    STATE_LOCK(); g_state.mag_cal_valid = v.valid; STATE_UNLOCK();
+
+    nvs_handle_t h;
+    if (nvs_open("compass", NVS_READWRITE, &h) != ESP_OK) return false;
+    bool ok = nvs_set_blob(h, "cal", &v, sizeof(v)) == ESP_OK && nvs_commit(h) == ESP_OK;
+    nvs_close(h);
+    ESP_LOGI(TAG, "compass cal saved (%s)", ok ? "ok" : "FAILED");
+    return ok;
+}
+
+/* Raw field (gauss) -> heading in degrees, 0 = magnetic north, clockwise. */
+float mag_heading(float gx, float gy, const mag_cal_t *c)
+{
+    float x = gx, y = gy;
+    if (c->valid) {
+        x = (gx - c->off[0]) * c->scale[0];
+        y = (gy - c->off[1]) * c->scale[1];
+    }
+    float h = atan2f(y, x) * 180.0f / (float)M_PI;
+    if (c->mirror) h = -h;
+    h += c->north_deg;
+    h = fmodf(h, 360.0f);
+    if (h < 0) h += 360.0f;
+    return h;
+}
 static i2c_master_dev_handle_t s_mag;
 
 static esp_err_t mag_write(uint8_t reg, uint8_t val)
@@ -80,6 +135,8 @@ static bool mag_init(void)
 
 static void sensors_task(void *arg)
 {
+    cal_load();
+    STATE_LOCK(); g_state.mag_cal_valid = s_cal.valid; STATE_UNLOCK();
     i2c_scan();
 
     bool ok = mag_init();
@@ -96,8 +153,9 @@ static void sensors_task(void *arg)
                 int16_t y = (int16_t)(raw[3] << 8 | raw[2]);
                 int16_t z = (int16_t)(raw[5] << 8 | raw[4]);
                 float gx = x / MAG_LSB_PER_G, gy = y / MAG_LSB_PER_G, gz = z / MAG_LSB_PER_G;
-                float h = atan2f(gy, gx) * 180.0f / (float)M_PI;
-                if (h < 0) h += 360.0f;
+                mag_cal_t c;
+                mag_cal_get(&c);
+                float h = mag_heading(gx, gy, &c);
                 STATE_LOCK();
                 g_state.mag_x = gx; g_state.mag_y = gy; g_state.mag_z = gz;
                 g_state.heading_deg = h;

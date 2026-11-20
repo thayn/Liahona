@@ -91,6 +91,17 @@ void lora_send_checkin(const uint8_t *uid, int uid_len, uint8_t station)
     queue_packet(&p);
 }
 
+void lora_send_update(uint8_t state, uint8_t detail, uint8_t done, uint8_t total, const char *version)
+{
+    lp_packet_t p = { .type = LP_UPDATE, .from = s_id, .to = LP_ID_BASE };
+    p.u.update.state = state;
+    p.u.update.detail = detail;
+    p.u.update.done = done;
+    p.u.update.total = total;
+    strlcpy(p.u.update.version, version ? version : "", sizeof(p.u.update.version));
+    queue_packet(&p);
+}
+
 /* Send now (radio task only). Returns to listening afterwards. */
 static void send_packet(lp_packet_t *p)
 {
@@ -159,7 +170,7 @@ static void handle_packet(const lp_packet_t *p, int16_t rssi, float snr)
         lp_packet_t ack = { .type = LP_ACK, .from = s_id, .to = LP_ID_BASE, .seq = p->seq };
         ack.u.ack.acked_seq = p->seq;
         ack.u.ack.ok = (p->type != LP_COMMAND ||
-                        (p->u.command.cmd >= LP_CMD_UNLOCK && p->u.command.cmd <= LP_CMD_STAGE)) ? 1 : 0;
+                        (p->u.command.cmd >= LP_CMD_UNLOCK && p->u.command.cmd <= LP_CMD_UPDATE)) ? 1 : 0;
         send_packet(&ack);
     }
 }
