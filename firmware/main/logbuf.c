@@ -8,8 +8,11 @@
  * along with a snapshot of the current run ("now"). Uploaded files are renamed
  * to .sent.
  *
- * A crash's backtrace goes straight to the USB port and isn't in the ring; the
- * ring holds what the ball was doing just before it.
+ * A crash also writes its reason and the CPU registers (PC, RA, SP) into the
+ * ring (esp_panic_handler is wrapped, see CMakeLists.txt), so the uploaded log
+ * says where it crashed. Turn an address into a line of code with:
+ *   riscv32-esp-elf-addr2line -pfiaC -e build/liahona_fw.elf 0x4000xxxx
+ * (use the .elf from the same build that's on the ball).
  */
 #include <stdarg.h>
 #include <stdbool.h>
@@ -26,6 +29,8 @@
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_heap_caps.h"
+#include "esp_private/panic_internal.h"
+#include "riscv/rvruntime-frames.h"
 #include "freertos/FreeRTOS.h"
 #include "nvs.h"
 #include "cJSON.h"
@@ -88,6 +93,49 @@ static char *ring_copy(void)
     out[n] = 0;
     for (size_t i = 0; i < n; i++) if (out[i] == 0) out[i] = '?';   /* keep it one string */
     return out;
+}
+
+/* ---- crash capture (runs inside the panic handler: no locks, no printf) ---- */
+static void IRAM_ATTR raw_put(const char *s)
+{
+    if (!s) return;
+    while (*s) {
+        s_ring.buf[s_ring.head++] = *s++;
+        if (s_ring.head >= RING_SIZE) { s_ring.head = 0; s_ring.wrapped = 1; }
+    }
+}
+static void IRAM_ATTR raw_hex(const char *label, uint32_t v)
+{
+    static const char d[] = "0123456789abcdef";
+    char b[12] = { ' ', '0', 'x' };
+    for (int i = 0; i < 8; i++) b[3 + i] = d[(v >> (28 - 4 * i)) & 15];
+    b[11] = 0;
+    raw_put(label);
+    raw_put(b);
+}
+
+void __real_esp_panic_handler(panic_info_t *info);
+void IRAM_ATTR __wrap_esp_panic_handler(panic_info_t *info)
+{
+    if (s_ring.magic == RING_MAGIC && s_ring.head < RING_SIZE && info) {
+        raw_put("\n!!! CRASH on core ");
+        char c[2] = { (char)('0' + (info->core & 7)), 0 };
+        raw_put(c);
+        raw_put(": ");
+        raw_put(info->reason);
+        if (info->description) { raw_put(" - "); raw_put(info->description); }
+        raw_hex("\n!!! addr", (uint32_t)(uintptr_t)info->addr);
+        const RvExcFrame *f = (const RvExcFrame *)info->frame;
+        if (f) {
+            raw_hex("  PC", (uint32_t)f->mepc);
+            raw_hex("  RA", (uint32_t)f->ra);
+            raw_hex("  SP", (uint32_t)f->sp);
+            raw_hex("  MCAUSE", (uint32_t)f->mcause);
+            raw_hex("  MTVAL", (uint32_t)f->mtval);
+        }
+        raw_put("\n");
+    }
+    __real_esp_panic_handler(info);
 }
 
 static const char *reason_name(esp_reset_reason_t r)
