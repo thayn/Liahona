@@ -1,0 +1,5 @@
+dependencies:
+  # Must match firmware/main/idf_component.yml (the ball's side of the link)
+  espressif/esp_hosted: "3.1.0"
+  idf:
+    version: ">=5.5"
