@@ -54,6 +54,10 @@ Everything else (upper and lower shell, lid cap, battery tray, spindle) is uncha
 To print the straps in gold, merge `__tan` into gold for the upper/lower shell. That cuts most of the filament swaps.
 
 ## Parts and print orientation
+The `.3mf` files are exported **already in print orientation**: bezel_ring, lid_ring and base_cap come out flipped, so you can import them and slice without rotating. The STL and STEP files stay in assembly orientation.
+
+Use tree (auto) supports for lid_ring. The others print without supports.
+
 | Part | Orientation | Notes |
 |---|---|---|
 | upper_shell (gold/tan/clear) | seam (z −24) down | Triangle row, rivet strip, band with 3 text repeats and lit diamonds. Inside: seam collar, LED ring 9 mm behind the letters, display spigot, shoulder web, tilted GPS bracket |
