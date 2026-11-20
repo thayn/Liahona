@@ -153,6 +153,9 @@ Do this **after** the ball is fully assembled. The battery, speaker magnet and s
 
 The calibration is kept in the ball's flash (NVS), so it survives power-off, SD card swaps and Wi-Fi updates. It is erased by **Erase Flash**. **Again** starts over.
 
+## Restarting a journey
+On the self-test page, tap the **Journey** row twice within 4 seconds. The ball goes back to step 1 and clears its saved progress. Turning the ball off and on keeps progress.
+
 ## Known limits (next milestones)
 - **Compass:** not tilt-compensated, so it reads best with the ball roughly level. Set `MAG_DECLINATION_DEG` in `board_pins.h` for your camp, so GPS bearings and the compass agree.
 - **LoRa:** tested both ways to about 300 m with the stock antennas. Leader text messages are stored but not shown on the journey screen yet.

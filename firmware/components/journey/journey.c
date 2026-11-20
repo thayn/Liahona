@@ -748,7 +748,7 @@ void journey_view(jv_view_t *v)
             v->has_target = true;
             v->target_lat = lat;
             v->target_lon = lon;
-            snprintf(v->body, sizeof(v->body), "Follow the gold spindle to %s, then tap the tag there.", place_name(to));
+            copy(v->body, sizeof(v->body), "Follow the gold spindle, then tap the tag there.");  /* no place name: finding it is the point */
         } else {
             snprintf(v->body, sizeof(v->body), "Go to %s and tap the tag there.", place_name(to));
         }
