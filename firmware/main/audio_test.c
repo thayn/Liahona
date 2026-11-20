@@ -231,7 +231,12 @@ void audio_test_init(void)
     }
     set_rate(BEEP_RATE);
     s_q = xQueueCreate(2, sizeof(audio_req_t));
-    xTaskCreate(audio_task, "audio", 8192, NULL, 5, NULL);
+    /* MP3 decoding needs a big stack: minimp3's decode_frame keeps ~16 KB of
+     * scratch on it. 8 KB overflowed (crash) the first time a journey played MP3. */
+    if (xTaskCreate(audio_task, "audio", 28 * 1024, NULL, 5, NULL) != pdPASS) {
+        ESP_LOGE(TAG, "no memory for the audio task");
+        g_state.audio = TEST_FAIL;
+    }
 }
 
 void audio_test_beep(void)
