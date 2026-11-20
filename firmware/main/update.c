@@ -38,6 +38,7 @@
 #include "liahona_proto.h"
 #include "update.h"
 #include "c6_update.h"
+#include "logbuf.h"
 
 static const char *TAG = "update";
 
@@ -261,8 +262,9 @@ static void run_update(void)
     const char *mgr = cJSON_GetStringValue(cJSON_GetObjectItem(w, "manager"));
     const char *key = cJSON_GetStringValue(cJSON_GetObjectItem(w, "key"));
     if (!ssid || !mgr || !key) { cJSON_Delete(w); fail(LP_UPE_NO_CONFIG, 0, 0); return; }
-    char manager[128];
+    char manager[128], ball_key[128];
     strlcpy(manager, mgr, sizeof(manager));
+    strlcpy(ball_key, key, sizeof(ball_key));
     size_t ml = strlen(manager);
     while (ml && manager[ml - 1] == '/') manager[--ml] = 0;
 
@@ -295,6 +297,10 @@ static void run_update(void)
         return;
     }
     free(mj);
+
+    /* send any saved crash logs (and a snapshot of this run) to the Manager */
+    int nlogs = logbuf_upload(manager, ball_key, ball);
+    if (nlogs) ESP_LOGI(TAG, "%d log(s) sent to the Manager", nlogs);
 
     /* which files changed? */
     char *sj = read_text(SYNC_FILE, 64 * 1024);

@@ -15,6 +15,7 @@
 #include "liahona.h"
 #include "update.h"
 #include "journey_port.h"
+#include "logbuf.h"
 #include "liahona_proto.h"
 #include "esp_timer.h"
 #include "liahona_proto.h"
@@ -333,7 +334,7 @@ static void refresh_cb(lv_timer_t *t)
     if (s.update_text[0])
         snprintf(buf, sizeof(buf), "%s: %s", s.fw_version, s.update_text);
     else
-        snprintf(buf, sizeof(buf), "%s  [%s]  tap to update", s.fw_version, s.ota_partition);
+        snprintf(buf, sizeof(buf), "%s  [%s]  last reset: %s  -  tap to update", s.fw_version, s.ota_partition, logbuf_last_reset());
     set_row(R_FW, s.update_state == LP_UPD_FAILED ? TEST_FAIL : TEST_PASS, buf);
 }
 
