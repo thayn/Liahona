@@ -225,7 +225,7 @@ static void refresh_cb(lv_timer_t *t)
 {
     liahona_state_t s;
     STATE_LOCK(); s = g_state; STATE_UNLOCK();
-    char buf[64];
+    char buf[128];
 
     if (lv_screen_active() != scr_test) return;
 
