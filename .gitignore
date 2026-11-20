@@ -11,3 +11,8 @@ __pycache__/
 *.pyc
 .vscode/
 .DS_Store
+firmware_c6/build/
+firmware_c6/managed_components/
+firmware_c6/sdkconfig
+firmware_c6/sdkconfig.old
+firmware_c6/dependencies.lock

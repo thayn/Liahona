@@ -37,6 +37,7 @@
 #include "journey_port.h"
 #include "liahona_proto.h"
 #include "update.h"
+#include "c6_update.h"
 
 static const char *TAG = "update";
 
@@ -388,7 +389,7 @@ static void update_task(void *arg)
 
 void update_start(void)
 {
-    if (s_busy) { lora_send_update(LP_UPD_FAILED, LP_UPE_BUSY, 0, 0, esp_app_get_description()->version); return; }
+    if (s_busy || c6_update_busy()) { lora_send_update(LP_UPD_FAILED, LP_UPE_BUSY, 0, 0, esp_app_get_description()->version); return; }
     s_busy = true;
     if (xTaskCreate(update_task, "update", 12288, NULL, 3, NULL) != pdPASS) s_busy = false;
 }

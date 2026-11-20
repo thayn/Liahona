@@ -9,4 +9,5 @@ dependencies:
   espressif/led_strip: "^3.0.0"
   # Wi-Fi through the board's ESP32-C6 co-processor (SDIO, ESP-Hosted), for updates
   espressif/esp_wifi_remote: "*"
-  espressif/esp_hosted: "*"
+  # Pinned to match firmware_c6/ (the Wi-Fi chip must run the same ESP-Hosted version)
+  espressif/esp_hosted: "3.1.0"

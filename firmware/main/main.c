@@ -14,6 +14,7 @@
 #include "bsp/esp-bsp.h"
 #include "liahona.h"
 #include "update.h"
+#include "c6_update.h"
 
 static const char *TAG = "liahona";
 
@@ -68,6 +69,8 @@ void app_main(void)
     lora_start();
     audio_test_init();
     journey_start();         /* reads liahona/journey.json + roster.json from the SD card */
+
+    c6_update_start();       /* updates the Wi-Fi chip if liahona/c6_wifi.bin is on the SD card */
 
     ESP_LOGI(TAG, "All modules started");
 
