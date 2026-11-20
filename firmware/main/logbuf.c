@@ -32,6 +32,7 @@
 #include "esp_private/panic_internal.h"
 #include "riscv/rvruntime-frames.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "nvs.h"
 #include "cJSON.h"
 #include "board_pins.h"
@@ -124,6 +125,8 @@ void IRAM_ATTR __wrap_esp_panic_handler(panic_info_t *info)
         raw_put(": ");
         raw_put(info->reason);
         if (info->description) { raw_put(" - "); raw_put(info->description); }
+        TaskHandle_t t = xTaskGetCurrentTaskHandleForCore(info->core);
+        if (t) { raw_put("  (task "); raw_put(pcTaskGetName(t)); raw_put(")"); }
         raw_hex("\n!!! addr", (uint32_t)(uintptr_t)info->addr);
         const RvExcFrame *f = (const RvExcFrame *)info->frame;
         if (f) {

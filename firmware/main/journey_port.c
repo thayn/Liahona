@@ -192,5 +192,5 @@ void journey_ui_restart(void)  { LOCK(); journey_restart(); UNLOCK(); }
 void journey_start(void)
 {
     s_lock = xSemaphoreCreateMutex();
-    xTaskCreate(journey_task, "journey", 8192, NULL, 4, NULL);
+    xTaskCreate(journey_task, "journey", 16384, NULL, 4, NULL);   /* view (~2 KB) + NVS saves + cJSON */
 }
