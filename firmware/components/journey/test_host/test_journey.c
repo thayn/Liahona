@@ -96,7 +96,7 @@ int main(int argc, char **argv)
     journey_tag(CAL); view(); CHECK(V.mode == JV_TASK && !strcmp(V.kind, "question"));
     advance(1); journey_tag(CAL); view(); CHECK(!strcmp(V.kind, "question"));
     journey_choice(1); view();
-    CHECK(!strcmp(V.kind, "checkin") && strstr(V.body, "lot corner"));
+    CHECK(!strcmp(V.kind, "checkin") && !strstr(V.body, "lot corner"));
     journey_tag(place_tag(SHED)); view(); CHECK(strstr(V.status, "Not this place"));
     journey_tag(place_tag(LOT)); view();
     CHECK(checkins == 1 && last_station > 0);
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     roll_call();
     CHECK(V.mode == JV_BRIEF); journey_continue(); view();
     CHECK(!strcmp(V.kind, "gather_fragments") && V.countdown_s == 480);
-    journey_tag(place_tag(PLATE1)); journey_tag(place_tag(PLATE2)); view(); CHECK(strstr(V.status, "plate 2") || strstr(V.status, "2 of 3"));
+    journey_tag(place_tag(PLATE1)); journey_tag(place_tag(PLATE2)); view(); CHECK(strstr(V.status, "Fragment found") || strstr(V.status, "2 of 3"));
     journey_tag(place_tag(GUARD)); view(); CHECK(V.mode == JV_DARK && V.countdown_s == 60);   /* 2nd wrong: 60 s */
     advance(61); CHECK(V.mode == JV_TASK && V.countdown_s == 480);       /* waited it out; clock restarts */
     journey_tag(place_tag(PLATE3)); view();

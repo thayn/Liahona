@@ -73,6 +73,7 @@
 #define CONTENT_JOURNEY     CONTENT_DIR "/journey.json"
 #define CONTENT_ROSTER      CONTENT_DIR "/roster.json"
 #define CONTENT_MEDIA_DIR   CONTENT_DIR "/media"
-#define AUDIO_VOLUME        75            /* 0-100 */
+#define AUDIO_VOLUME        95            /* codec output, 0-100 */
+#define AUDIO_FILE_GAIN     1.6f          /* extra boost for journey audio (clipped, not wrapped) */
 /* Local time = GPS time (UTC) + this, for "Rest until 13:30". Pacific daylight = -420. */
 #define LOCAL_UTC_OFFSET_MIN  (-420)

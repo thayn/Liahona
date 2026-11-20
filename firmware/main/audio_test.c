@@ -56,7 +56,7 @@ static void play_tone(float hz, int ms)
             float env = 1.0f;
             if (k < 400) env = k / 400.0f;                       /* fade in  */
             if (total - k < 1500) env = (total - k) / 1500.0f;   /* fade out */
-            buf[i] = (int16_t)(sinf(2.0f * (float)M_PI * hz * k / BEEP_RATE) * 9000 * env);
+            buf[i] = (int16_t)(sinf(2.0f * (float)M_PI * hz * k / BEEP_RATE) * 16000 * env);
         }
         esp_codec_dev_write(s_spk, buf, n * sizeof(int16_t));
         done += n;
@@ -75,7 +75,8 @@ static void out_mono(int16_t *s, int n, outpos_t *o)
         float g = 1.0f;
         if (k < FADE_SAMPLES) g = (float)k / FADE_SAMPLES;
         if (left < FADE_SAMPLES) g = (float)left / FADE_SAMPLES;
-        if (g < 1.0f) s[i] = (int16_t)(s[i] * g);
+        float v = s[i] * g * AUDIO_FILE_GAIN;
+        s[i] = (int16_t)(v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : v);
     }
     esp_codec_dev_write(s_spk, s, n * sizeof(int16_t));
     o->played += n;
@@ -191,7 +192,8 @@ static void play_mp3(FILE *f, int start_ms, int dur_ms)
 static void play_file(const audio_req_t *r)
 {
     FILE *f = fopen(r->path, "rb");
-    if (!f) { ESP_LOGW(TAG, "can't open %s", r->path); return; }
+    if (!f) { ESP_LOGW(TAG, "can't open %s (is it on the SD card? only MP3 and WAV are sent to the ball)", r->path); return; }
+    ESP_LOGI(TAG, "playing %s from %d ms for %d ms", r->path, r->start_ms, r->dur_ms);
     const char *dot = strrchr(r->path, '.');
     if (dot && (!strcasecmp(dot, ".wav"))) play_wav(f, r->start_ms, r->dur_ms);
     else play_mp3(f, r->start_ms, r->dur_ms);
