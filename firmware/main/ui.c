@@ -188,6 +188,8 @@ static void build_test(void)
     lv_obj_add_flag(row_val[R_LORA], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row_val[R_LORA], lora_tap_cb, LV_EVENT_CLICKED, NULL);
 
+    /* update messages are longer than the row: let that one scroll */
+    lv_label_set_long_mode(row_val[R_FW], LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_add_flag(row_val[R_FW], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row_val[R_FW], update_tap_cb, LV_EVENT_CLICKED, NULL);
 

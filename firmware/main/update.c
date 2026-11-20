@@ -156,16 +156,23 @@ static void full_url(const char *manager, const char *u, char *out, size_t cap)
     else snprintf(out, cap, "%s%s", manager, u);
 }
 
+static esp_err_t s_http_err;                        /* why the last open_get failed */
+
 static esp_http_client_handle_t open_get(const char *url)
 {
+    s_http_err = ESP_OK;
     esp_http_client_config_t c = {
         .url = url, .timeout_ms = HTTP_TIMEOUT_MS, .crt_bundle_attach = esp_crt_bundle_attach,
         .buffer_size = 4096, .buffer_size_tx = 4096,       /* presigned S3 links are long */
         .keep_alive_enable = false,
     };
     esp_http_client_handle_t h = esp_http_client_init(&c);
-    if (!h) return NULL;
-    if (esp_http_client_open(h, 0) != ESP_OK) { esp_http_client_cleanup(h); return NULL; }
+    if (!h) { s_http_err = ESP_ERR_NO_MEM; return NULL; }
+    if ((s_http_err = esp_http_client_open(h, 0)) != ESP_OK) {
+        ESP_LOGW(TAG, "can't connect: %s", esp_err_to_name(s_http_err));
+        esp_http_client_cleanup(h);
+        return NULL;
+    }
     esp_http_client_fetch_headers(h);
     return h;
 }
@@ -273,9 +280,20 @@ static void run_update(void)
     cJSON_Delete(w);
     if (status == 401 || status == 403) { free(mj); wifi_down(); fail(LP_UPE_KEY, 0, 0); return; }
     cJSON *m = (mj && status == 200) ? cJSON_Parse(mj) : NULL;
-    free(mj);
     cJSON *files = cJSON_GetObjectItem(m, "files");
-    if (!cJSON_IsArray(files)) { cJSON_Delete(m); wifi_down(); fail(LP_UPE_MANAGER, 0, 0); return; }
+    if (!cJSON_IsArray(files)) {
+        /* say why on the screen, so a closed-up ball can still be diagnosed */
+        char t[64];
+        if (status == 0) snprintf(t, sizeof(t), "Manager: can't connect (%s)", esp_err_to_name(s_http_err));
+        else if (status != 200) snprintf(t, sizeof(t), "Manager: HTTP %d", status);
+        else snprintf(t, sizeof(t), "Manager: bad reply");
+        ESP_LOGW(TAG, "%s  host=%.60s  reply=%.200s", t, manager, mj ? mj : "");
+        free(mj);
+        cJSON_Delete(m); wifi_down();
+        report(LP_UPD_FAILED, LP_UPE_MANAGER, 0, 0, t);
+        return;
+    }
+    free(mj);
 
     /* which files changed? */
     char *sj = read_text(SYNC_FILE, 64 * 1024);
