@@ -24,6 +24,8 @@
 #define CX    (SCR_W / 2)
 #define CY    (SCR_H / 2)
 
+#define SELFTEST_HOLD_MS 3000   /* press and hold this long for the self-test */
+
 #define COL_BG      lv_color_hex(0x0B0805)   /* near-black warm brown */
 #define COL_GOLD    lv_color_hex(0xF2C766)
 #define COL_TAN     lv_color_hex(0x6B4A1B)
@@ -329,6 +331,10 @@ void ui_start(void)
     /* Wait as long as it takes for the LVGL lock (-1 = forever). A timeout of 0 means
      * "don't wait" with this BSP, and it returns esp_err_t (ESP_OK = 0), not bool. */
     bsp_display_lock(-1);
+    /* Hold 3 s to open the self-test, so campers don't open it by accident
+     * (LVGL's default long press is 0.4 s). Long press is only used for that. */
+    for (lv_indev_t *in = lv_indev_get_next(NULL); in; in = lv_indev_get_next(in))
+        if (lv_indev_get_type(in) == LV_INDEV_TYPE_POINTER) lv_indev_set_long_press_time(in, SELFTEST_HOLD_MS);
     scr_compass = make_screen();
     ui_compass_build(scr_compass);
     lv_obj_add_event_cb(scr_compass, any_touch_cb, LV_EVENT_PRESSED, NULL);

@@ -127,7 +127,7 @@ Once a ball is closed up, it can update itself: new journey, roster, audio and f
   - reloads the journey. Progress carries on if it's the same journey;
   - installs new firmware into the spare app slot and restarts.
 - The Field table shows each ball's progress, then "Updated", "Already up to date" or the reason it failed.
-- **On the ball:** long-press for the self-test page and tap the **Firmware** row. It runs the same update and shows its progress there.
+- **On the ball:** hold the screen for 3 seconds for the self-test page and tap the **Firmware** row. It runs the same update and shows its progress there.
 - **Safety:** new firmware runs on trial. If it crashes in its first 20 seconds, the bootloader goes back to the previous firmware on the next start.
 
 ### If it fails
@@ -144,7 +144,7 @@ Not yet tested on hardware: the ESP32-C6 link (ESP-Hosted over SDIO, the P4's de
 ## Compass calibration (v0.5.1)
 Do this **after** the ball is fully assembled. The battery, speaker magnet and screws bend the magnetic field, and calibration corrects for them. Redo it if you change anything inside the ball. Keep it away from steel tables, laptops and cars while you do it.
 
-1. Long-press for the self-test page, then tap the **Compass** row.
+1. Hold the screen for 3 seconds for the self-test page, then tap the **Compass** row.
 2. Hold the ball level and turn it slowly, two full turns. The dots round the edge fill in. When they're all gold it beeps and says **Done**.
 3. Tap **Save**.
 4. Turn the ball clockwise. The number should go **up**. If it goes down, tap **Flip**.
