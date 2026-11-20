@@ -9,5 +9,9 @@ idf_component_register(
              esp_driver_rmt fatfs app_update nvs_flash
              esp_timer liahona_radio journey minimp3 cjson
              esp_wifi esp_netif esp_event esp_http_client esp_https_ota mbedtls
-             esp_hosted esp_app_format
+             esp_hosted esp_app_format esp_system
 )
+
+# logbuf.c records a crash's reason and registers in the log ring before the
+# normal panic handler runs (the ball has no USB console once it's assembled).
+target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=esp_panic_handler")
