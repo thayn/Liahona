@@ -15,6 +15,7 @@
 #include "liahona.h"
 #include "update.h"
 #include "c6_update.h"
+#include "logbuf.h"
 
 static const char *TAG = "liahona";
 
@@ -36,6 +37,7 @@ static void firmware_info(void)
 
 void app_main(void)
 {
+    logbuf_start();          /* log ring that survives a crash (logbuf.c) */
     memset(&g_state, 0, sizeof(g_state));
     g_state_lock = xSemaphoreCreateMutex();
 
@@ -61,6 +63,7 @@ void app_main(void)
     /* Hardware modules. Each runs in its own task and reports into g_state,
      * so one missing part never stops the others. */
     storage_start();
+    if (g_state.sd == TEST_PASS) logbuf_save_crash();
     sensors_start(bus);
     gps_start(bus);
     nfc_start(bus);
