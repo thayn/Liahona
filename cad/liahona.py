@@ -955,6 +955,29 @@ def summary():
                 AX_Y=round(AX_Y, 2), Z_AX=Z_AX, chassis_z=chassis_z(), led_face=RI - S["LED_GAP"])
 
 
+# Parts that print upside down. Their 3MF is turned over so it opens ready to print;
+# the STL and STEP files stay in assembly position (check.py uses the STLs).
+PRINT_FLIPPED = {"bezel_ring", "lid_ring", "base_cap"}
+
+
+def export_3mf(name, out):
+    """Build <name>.3mf from the part's colour STLs, in print orientation."""
+    import trimesh
+    import numpy as np
+    scene = trimesh.Scene()
+    flip = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0]) if name in PRINT_FLIPPED else np.eye(4)
+    for col in ("gold", "tan", "clear"):
+        f = out / f"{name}__{col}.stl"
+        if not f.exists():
+            continue
+        m = trimesh.load(str(f))
+        m.apply_transform(flip)
+        m.visual.face_colors = [int(255 * v) for v in COLOURS[col]] + [255]
+        m.metadata["name"] = f"{name}_{col}"
+        scene.add_geometry(m, node_name=f"{name}_{col}", geom_name=f"{name}_{col}")
+    (out / f"{name}.3mf").write_bytes(trimesh.exchange.threemf.export_3MF(scene))
+
+
 def export_part(name, bodies, out):
     import trimesh
     meshes = []
@@ -967,10 +990,7 @@ def export_part(name, bodies, out):
         meshes.append((col, m))
     comp = Compound(children=list(bodies.values())) if len(bodies) > 1 else list(bodies.values())[0]
     export_step(comp, str(out / f"{name}.step"))
-    scene = trimesh.Scene()
-    for col, m in meshes:
-        scene.add_geometry(m, node_name=f"{name}_{col}", geom_name=f"{name}_{col}")
-    (out / f"{name}.3mf").write_bytes(trimesh.exchange.threemf.export_3MF(scene))
+    export_3mf(name, out)
 
 
 if __name__ == "__main__":
