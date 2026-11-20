@@ -143,6 +143,9 @@ static void update_tap_cb(lv_event_t *e)
     update_start();
 }
 
+/* tap the Compass row = calibration screen (ui_cal.c) */
+static void cal_tap_cb(lv_event_t *e) { ui_cal_show(); }
+
 static void leds_cb(lv_event_t *e)
 {
     /* Each tap: test cycle -> off -> gold glow -> test cycle ... */
@@ -187,6 +190,9 @@ static void build_test(void)
 
     lv_obj_add_flag(row_val[R_FW], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row_val[R_FW], update_tap_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_add_flag(row_val[R_MAG], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(row_val[R_MAG], cal_tap_cb, LV_EVENT_CLICKED, NULL);
 
     /* tap the GPS row = screen-off noise test */
     lv_obj_add_flag(row_val[R_GPS], LV_OBJ_FLAG_CLICKABLE);
@@ -234,7 +240,8 @@ static void refresh_cb(lv_timer_t *t)
         set_row(R_I2C, s.i2c_count ? TEST_PASS : TEST_PENDING, s.i2c_count ? a : "scanning");
     }
 
-    if (s.mag == TEST_PASS) snprintf(buf, sizeof(buf), "%d°  (%.2f %.2f %.2f)", (int)s.heading_deg, s.mag_x, s.mag_y, s.mag_z);
+    if (s.mag == TEST_PASS) snprintf(buf, sizeof(buf), "%d°  %s", (int)s.heading_deg,
+                                     s.mag_cal_valid ? "calibrated" : "tap to calibrate");
     else snprintf(buf, sizeof(buf), "%s", res_word(s.mag));
     set_row(R_MAG, s.mag, buf);
 
@@ -327,6 +334,7 @@ void ui_start(void)
     lv_obj_add_event_cb(scr_compass, compass_click_cb, LV_EVENT_SHORT_CLICKED, NULL);
     build_test();
     ui_journey_build();
+    ui_cal_build();
     lv_screen_load(scr_compass);
     lv_timer_create(refresh_cb, 200, NULL);
     lv_timer_create(compass_timer_cb, 33, NULL);

@@ -1,4 +1,4 @@
-# Liahona ball firmware — v0.5.0 (milestone 4: Wi-Fi updates)
+# Liahona ball firmware — v0.5.1 (milestone 4: Wi-Fi updates, compass calibration)
 
 Foundation + bench self-test for the Waveshare **ESP32-P4-WIFI6-Touch-LCD-4C** (4", 720×720).
 Built and checked with **ESP-IDF v6.1** (target `esp32p4`). The journey screens (v0.4) are new and have not run on hardware yet.
@@ -141,7 +141,19 @@ Once a ball is closed up, it can update itself: new journey, roster, audio and f
 
 Not yet tested on hardware: the ESP32-C6 link (ESP-Hosted over SDIO, the P4's default pins) alongside the SD card. If Wi-Fi doesn't start, send the boot log.
 
+## Compass calibration (v0.5.1)
+Do this **after** the ball is fully assembled. The battery, speaker magnet and screws bend the magnetic field, and calibration corrects for them. Redo it if you change anything inside the ball. Keep it away from steel tables, laptops and cars while you do it.
+
+1. Long-press for the self-test page, then tap the **Compass** row.
+2. Hold the ball level and turn it slowly, two full turns. The dots round the edge fill in. When they're all gold it beeps and says **Done**.
+3. Tap **Save**.
+4. Turn the ball clockwise. The number should go **up**. If it goes down, tap **Flip**.
+5. Point the top of the screen at north (use your phone's compass), then tap **Set N**. The number should read 0°.
+6. Tap **Back**. The Compass row now says "calibrated".
+
+The calibration is kept in the ball's flash (NVS), so it survives power-off, SD card swaps and Wi-Fi updates. It is erased by **Erase Flash**. **Again** starts over.
+
 ## Known limits (next milestones)
-- **Compass:** uncalibrated and not tilt-compensated. Calibration is coming. Set `MAG_DECLINATION_DEG` in `board_pins.h` for your camp, so GPS bearings and the compass agree.
+- **Compass:** not tilt-compensated, so it reads best with the ball roughly level. Set `MAG_DECLINATION_DEG` in `board_pins.h` for your camp, so GPS bearings and the compass agree.
 - **LoRa:** tested both ways to about 300 m with the stock antennas. Leader text messages are stored but not shown on the journey screen yet.
-- **Not in this version yet:** video playback, the remaining task types, Wi-Fi via the ESP32-C6, and OTA updates. The partitions are already set up for OTA.
+- **Not in this version yet:** video playback and the remaining task types.
