@@ -14,6 +14,7 @@
 #include "bsp/esp-bsp.h"
 #include "liahona.h"
 #include "update.h"
+#include "journey_port.h"
 #include "liahona_proto.h"
 #include "esp_timer.h"
 #include "liahona_proto.h"
@@ -38,10 +39,10 @@ static lv_obj_t *scr_compass, *scr_test;
 
 
 /* self-test rows */
-enum { R_TOUCH, R_I2C, R_MAG, R_GPS, R_NFC, R_LORA, R_LID, R_LEDS, R_BATT, R_SD, R_AUDIO, R_FW, R_COUNT };
+enum { R_TOUCH, R_I2C, R_MAG, R_GPS, R_NFC, R_LORA, R_LID, R_LEDS, R_BATT, R_SD, R_AUDIO, R_JOURNEY, R_FW, R_COUNT };
 static const char *row_name[R_COUNT] = {
     "Touch", "I2C bus", "Compass", "GPS", "NFC", "LoRa", "Lid switch", "LEDs",
-    "Battery", "SD card", "Speaker", "Firmware",
+    "Battery", "SD card", "Speaker", "Journey", "Firmware",
 };
 static lv_obj_t *row_dot[R_COUNT], *row_val[R_COUNT];
 
@@ -145,6 +146,24 @@ static void update_tap_cb(lv_event_t *e)
     update_start();
 }
 
+/* tap the Journey row twice (within 4 s) = back to step 1, progress cleared */
+static int64_t s_restart_armed_until;
+static void journey_tap_cb(lv_event_t *e)
+{
+    bool active;
+    STATE_LOCK(); active = g_state.journey_active; STATE_UNLOCK();
+    if (!active) return;
+    int64_t now = esp_timer_get_time() / 1000;
+    if (now < s_restart_armed_until) {
+        s_restart_armed_until = 0;
+        journey_ui_restart();
+        audio_test_beep();
+        ESP_LOGI("ui", "journey restarted from the self-test");
+    } else {
+        s_restart_armed_until = now + 4000;
+    }
+}
+
 /* tap the Compass row = calibration screen (ui_cal.c) */
 static void cal_tap_cb(lv_event_t *e) { ui_cal_show(); }
 
@@ -165,7 +184,7 @@ static void build_test(void)
     lv_label_set_text(title, "SELF-TEST");
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 70);
 
-    const int top = 118, step = 33, x_dot = 140, x_name = 165, x_val = 330;
+    const int top = 112, step = 30, x_dot = 140, x_name = 165, x_val = 330;
     for (int i = 0; i < R_COUNT; i++) {
         int y = top + i * step;
         row_dot[i] = lv_obj_create(scr_test);
@@ -194,6 +213,9 @@ static void build_test(void)
     lv_label_set_long_mode(row_val[R_FW], LV_LABEL_LONG_SCROLL_CIRCULAR);
     lv_obj_add_flag(row_val[R_FW], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row_val[R_FW], update_tap_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_add_flag(row_val[R_JOURNEY], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(row_val[R_JOURNEY], journey_tap_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_add_flag(row_val[R_MAG], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row_val[R_MAG], cal_tap_cb, LV_EVENT_CLICKED, NULL);
@@ -301,6 +323,12 @@ static void refresh_cb(lv_timer_t *t)
     set_row(R_SD, s.sd, buf);
 
     set_row(R_AUDIO, s.audio, s.audio == TEST_PASS ? "PASS" : s.audio == TEST_FAIL ? "FAIL" : "press Beep");
+
+    if (!s.journey_active) snprintf(buf, sizeof(buf), "none loaded");
+    else if (esp_timer_get_time() / 1000 < s_restart_armed_until) snprintf(buf, sizeof(buf), "tap again to restart");
+    else if (s.stage) snprintf(buf, sizeof(buf), "step %d  (tap twice to restart)", s.stage);
+    else snprintf(buf, sizeof(buf), "not started");
+    set_row(R_JOURNEY, s.journey_active ? TEST_PASS : TEST_PENDING, buf);
 
     if (s.update_text[0])
         snprintf(buf, sizeof(buf), "%s: %s", s.fw_version, s.update_text);
