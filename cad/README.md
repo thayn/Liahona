@@ -14,8 +14,7 @@ The ball's shape (radius, split heights, ornament, band, letters, insert circles
 The v3 fixes are in the 175 mm files too. Only four parts differ from the v2 print:
 | Part | Why |
 |---|---|
-| `out/175mm/bezel_ring.3mf` | Hinge pin entry; measured lid-switch and power-switch pockets |
-| `out/175mm/plunger.3mf` | Matches the new lid-switch pocket |
+| `out/175mm/bezel_ring.3mf` | Hinge pin entry; drop-in lid-switch pocket; looser power-switch pocket |
 | `out/175mm/chassis.3mf` | Posts at 75 × 75 mm with pegs for the back-plate holes |
 | `out/175mm/base_cap.3mf` | Optional: the cable channel no longer swallows one of the 3 inserts. The old one works with 2 screws |
 | `out/175mm/lid_ring.3mf` | Optional: the entry-side knuckle is a free fit. The old one works if you press the rod through it, or drill it out to 2.2 mm |
@@ -29,12 +28,11 @@ Everything else (upper and lower shell, lid cap, battery tray, spindle) is uncha
 - **GPS** sits steeper (65°) and a little lower to fit the smaller shoulder.
 - **Rivet strip** under the bezel kept at full height.
 - **Base cap:** the USB cable channel now runs at 60°, between two inserts. Before, it swallowed the insert at 0°.
-- **Lid switch from measurements:** 12.8 × 5.8 mm body, lever 3.83 mm above the body when free, clicks at 2.04 mm.
-  - The switch sits lower, hanging about 1 mm below the bezel, to leave room above it for the free lever and the plunger collar.
-  - With the lid shut, the lid pushes the plunger down until the lever is 0.5 mm past the click.
-  - With the lid open, the plunger stands about 2.3 mm above the bezel top.
-  - The plunger is a 5.7 mm shaft with a 4 mm collar. Put the plunger in before the switch.
-- **Power switch from measurements:** body 9.11 × 3.58 × 3.5 mm, slider 1.44 mm wide, 1.78 mm tall, 3.71 mm travel.
+- **Lid switch, drop-in:** the 12.8 × 5.8 mm switch drops into a pocket from the bezel top, lever up, and rests on a ledge. Its leads go out through a smaller hole underneath.
+  - The pocket is 1 mm longer than the body, for the lever, with 0.25 mm clearance each side.
+  - With the lid shut, the lid itself pushes the lever 0.5 mm past the click (2.04 mm). With the lid open, the lever stands about 2.3 mm proud.
+  - No plunger part.
+- **Power switch from measurements:** body 9.11 × 3.58 × 3.5 mm, slider 1.44 mm wide, 1.78 mm tall, 3.71 mm travel. 0.45 mm clearance each side for the body and the slot.
   - The slider top sits 0.3 mm below the bezel top, in a slot long enough for its full travel.
   - The board itself is the measured 84.56 × 65.41 mm.
 - **Mounting holes:** measured 75 × 75 mm apart, 4 mm across. The 4C uses the same spacing. There are no screws; the chassis is fixed with pegs and glue.
@@ -59,13 +57,13 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 | Part | Orientation | Notes |
 |---|---|---|
 | upper_shell (gold/tan/clear) | seam (z −24) down | Triangle row, rivet strip, band with 3 text repeats and lit diamonds. Inside: seam collar, LED ring 9 mm behind the letters, display spigot, shoulder web, tilted GPS bracket |
-| bezel_ring | flipped | Riveted rim, display pocket + lip, twist-lock, hinge centre knuckle. Hidden pockets for the lid switch (with plunger) and the power slide switch |
+| bezel_ring | flipped | Riveted rim, display pocket + lip, twist-lock, hinge centre knuckle. A drop-in pocket for the lid switch (open at the top) and a hidden pocket for the power slide switch |
 | lid_ring | upside down | Riveted rim, two lid knuckles (0.8 mm proud, no outside block) |
 | lid_cap | flat face down | Eight raised leaf panels with veins. Solid: use ~10 % infill |
 | spindle | upright, 0.2 mm nozzle | Turned base + finial; the 3 mm brass rod is the stem. Scaled to 76 mm for the bigger ball |
 | lower_shell (gold/tan) | bottom down | Seam strip with rivets, lower triangle row, speaker grille holes inside one panel at −X, bayonet spigot + O-ring groove |
 | base_cap | flipped (flat top on the bed) | Twelve raised petals, flat foot, USB-C slot at the very bottom centre, 6069 bore + nut pocket, cable channel |
-| chassis, battery_tray, plunger | as before | Any PETG |
+| chassis, battery_tray | as before | Any PETG |
 
 ## What changed from v1 (v2, 175 mm)
 - Ball is 175 mm. The lid seam moved up to z 52, giving a 9 mm shoulder around the glass.
@@ -73,7 +71,7 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 - Letters are 8 mm (was 13), spaced out like the concept. The text repeats three times around, with a lit diamond between repeats.
 - **USB-C** is now a USB-C-shaped slot at the bottom of the foot, sized so plug overmolds fit. The round 6069 sits behind a 1.6 mm skin, so only the slot shows. The ball has to lie on its side, or sit in a stand, while it charges.
 - **Power switch** is inside, under the lid on the bezel top (front-right). The actuator sits 0.4 mm below the surface, so you flip it with a fingernail.
-- **Lid switch** is hidden in the bezel. The lid rim presses a small plunger (2 mm), which presses the SS07 lever.
+- **Lid switch** sits in the bezel top, lever up. The lid rim presses the lever directly.
 - **Hinge** is a slim knuckle barrel set into the back rim, 0.8 mm proud. There's no external block.
 - **GPS** sits on a 55° bracket in the shoulder cavity, patch facing up and out, away from the display.
 - **LED strip** sits on a ring built into the upper shell (it no longer rides on the chassis), 9 mm behind the letters.
@@ -90,7 +88,7 @@ To print the straps in gold, merge `__tan` into gold for the upper/lower shell. 
 ## Still needed
 - Standoff height/thread (placeholder 9 mm, M2.5).
 - 6069 nose depth (to confirm the plug engages through the 1.6 mm skin).
-- SS07 lever travel (plunger length). PN532, Core1262 and PowerBoost holes.
+- PN532, Core1262 and PowerBoost holes.
 - LoRa antenna: suggest the shoulder cavity at ~160°, opposite the GPS.
 - A charging stand, since the port is at the bottom.
 

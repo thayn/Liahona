@@ -165,7 +165,7 @@ def main():
     REPORT["mesh"] = {n: {c: dict(watertight=bool(m.is_watertight), cm3=round(m.volume / 1000, 1))
                           for c, m in b.items()} for n, b in bodies.items()}
     expected = {("chassis", "[connector_keepout]"),
-                ("spindle", "[spindle_rod]"), ("lid_cap", "[spindle_rod]"), ("plunger", "[lid_switch]")}
+                ("spindle", "[spindle_rod]"), ("lid_cap", "[spindle_rod]")}
     REPORT["collisions"] = collisions(allm, skip=expected)
     print("collisions:", REPORT["collisions"], flush=True)
     # lid swing
@@ -177,7 +177,7 @@ def main():
         v = 0.0
         for nm in ("lid_ring", "lid_cap", "spindle"):
             mv = allm[nm].copy(); mv.apply_transform(M)
-            for other in ("bezel_ring", "upper_shell", "[display]", "plunger"):
+            for other in ("bezel_ring", "upper_shell", "[display]"):
                 v += trimesh.boolean.intersection([mv, allm[other]], engine="manifold").volume
         swing.append((a, round(float(v), 2)))
     REPORT["lid_swing_overlap_mm3"] = swing
