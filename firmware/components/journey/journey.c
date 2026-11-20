@@ -195,11 +195,7 @@ static const char *place_for_uid(const char *uid, int *station)
     }
     return NULL;
 }
-static const char *place_name(const char *key)
-{
-    const char *n = key ? str(obj(E.places, key), "name") : NULL;
-    return n ? n : (key ? key : "");
-}
+/* Place names are for planners only: the ball never shows them. */
 static bool list_has(const cJSON *arr, const char *key)
 {
     const cJSON *v;
@@ -496,7 +492,7 @@ void journey_tag(const char *uid)
             uint8_t b[10]; int n;
             uid_bytes(uid, b, &n);
             if (E.h.checkin) E.h.checkin(b, n, station);
-            flash(place_name(place));
+            flash("Found it!");
             complete_task();
         } else if (place) flash("Not this place");
         else if (p && is_leader(p) && member_index(p) < 0) complete_task();   /* a station leader vouches */
@@ -507,7 +503,7 @@ void journey_tag(const char *uid)
         if (!place) return;
         int i = list_index(obj(tk, "tags"), place);
         if (i >= 0 && i < MAX_FRAGMENTS) {
-            if (!E.frag_found[i]) { E.frag_found[i] = true; flash(place_name(place)); bump(); }
+            if (!E.frag_found[i]) { E.frag_found[i] = true; flash("Fragment found"); bump(); }
             int n = cJSON_GetArraySize(obj(tk, "tags")), got = 0;
             for (int k = 0; k < n && k < MAX_FRAGMENTS; k++) got += E.frag_found[k];
             if (got >= n) complete_task();
@@ -750,7 +746,7 @@ void journey_view(jv_view_t *v)
             v->target_lon = lon;
             copy(v->body, sizeof(v->body), "Follow the gold spindle, then tap the tag there.");  /* no place name: finding it is the point */
         } else {
-            snprintf(v->body, sizeof(v->body), "Go to %s and tap the tag there.", place_name(to));
+            copy(v->body, sizeof(v->body), "Find the place, then tap the tag there.");  /* never name it */
         }
         if (cJSON_GetArraySize(tags) > 1) snprintf(v->body + strlen(v->body), sizeof(v->body) - strlen(v->body),
                                                    " (%d places count.)", cJSON_GetArraySize(tags));
