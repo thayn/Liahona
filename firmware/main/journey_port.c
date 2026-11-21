@@ -188,6 +188,7 @@ void journey_ui_continue(void) { LOCK(); journey_continue(); UNLOCK(); }
 void journey_ui_hint(void)     { LOCK(); journey_hint(); UNLOCK(); }
 void journey_ui_replay(void)   { LOCK(); journey_replay(); UNLOCK(); }
 void journey_ui_restart(void)  { LOCK(); journey_restart(); UNLOCK(); }
+void journey_ui_skip(void)     { LOCK(); journey_leader(2, 0); UNLOCK(); }   /* as a leader's Skip */
 
 void journey_start(void)
 {

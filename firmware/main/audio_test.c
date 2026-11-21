@@ -57,7 +57,7 @@ static void play_tone(float hz, int ms)
             float env = 1.0f;
             if (k < 400) env = k / 400.0f;                       /* fade in  */
             if (total - k < 1500) env = (total - k) / 1500.0f;   /* fade out */
-            buf[i] = (int16_t)(sinf(2.0f * (float)M_PI * hz * k / BEEP_RATE) * 16000 * env);
+            buf[i] = (int16_t)(sinf(2.0f * (float)M_PI * hz * k / BEEP_RATE) * 24000 * env);
         }
         esp_codec_dev_write(s_spk, buf, n * sizeof(int16_t));
         done += n;
@@ -86,8 +86,8 @@ static void out_mono(int16_t *s, int n, outpos_t *o)
         if (boost > AUDIO_MAX_BOOST) boost = AUDIO_MAX_BOOST;
         if (boost < 1.0f) boost = 1.0f;
         float v = x * boost;
-        if (v > 30000.0f) v = 30000.0f + (v - 30000.0f) * 0.25f;           /* soft knee */
-        else if (v < -30000.0f) v = -30000.0f + (v + 30000.0f) * 0.25f;
+        if (v > 30000.0f) v = 30000.0f + (v - 30000.0f) * 0.35f;           /* soft knee */
+        else if (v < -30000.0f) v = -30000.0f + (v + 30000.0f) * 0.35f;
         s[i] = (int16_t)(v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : v);
     }
     esp_codec_dev_write(s_spk, s, n * sizeof(int16_t));

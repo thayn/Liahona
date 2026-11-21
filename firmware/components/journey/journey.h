@@ -62,7 +62,7 @@ typedef struct {
     void (*audio_stop)(void);
     void (*checkin)(const uint8_t *uid, int uid_len, int station);   /* report over LoRa */
     bool (*local_minutes)(int *minutes_since_midnight);              /* for "rest until" */
-    void (*leds)(int mode);                                          /* 0 glow, 2 off, 3 pulse */
+    void (*leds)(int mode);                                          /* 0 glow, 2 off, 3 pulse, 4 red (dark) */
 } jhooks_t;
 
 /* Load from JSON text. ball_id picks the team from the roster. Returns 0, or -1 with err set

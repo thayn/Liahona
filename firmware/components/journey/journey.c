@@ -256,7 +256,7 @@ static void darken(void)
     copy(E.dark_restore, sizeof(E.dark_restore), E.unity_restore ? "unity" : "wait");
     E.dark_until = now() + (int64_t)s * 1000;
     clear_taps();
-    if (E.h.leds) E.h.leds(2);
+    if (E.h.leds) E.h.leds(4);                      /* dark: red glow */
     save();
     bump();
 }
@@ -305,7 +305,7 @@ static void start_task(int t)
         copy(E.dark_restore, sizeof(E.dark_restore), r ? r : "unity");
         int secs = (int)num(tk, "seconds", 0);
         E.dark_until = (strcmp(E.dark_restore, "wait") == 0 && secs > 0) ? now() + (int64_t)secs * 1000 : 0;
-        if (E.h.leds) E.h.leds(2);
+        if (E.h.leds) E.h.leds(4);                  /* dark: red glow */
     } else if (E.h.leds) {
         E.h.leds(0);
     }
