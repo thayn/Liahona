@@ -13,6 +13,8 @@
 #include "liahona.h"
 #include "journey_port.h"
 #include "ui_fonts.h"
+#include "ball_jpeg.h"
+#include "board_pins.h"
 
 #define C_BG      0x0E0B07
 #define C_GOLD    0xE8C66A
@@ -26,6 +28,9 @@
 
 static lv_obj_t *scr, *col;
 static lv_obj_t *lbl_step, *lbl_title, *lbl_head, *lbl_ref, *lbl_body, *lbl_count, *lbl_status, *lbl_hint;
+static lv_obj_t *img_pic;
+static ball_jpeg_t s_pic;
+static char s_pic_name[96];
 static lv_obj_t *box_choices, *row_actions, *btn_hint, *btn_replay, *btn_cont, *lbl_cont, *btn_compass;
 static uint32_t s_version = 0xFFFFFFFF;
 static jv_mode_t s_mode = (jv_mode_t)-1;
@@ -157,6 +162,8 @@ void ui_journey_build(void)
     lbl_title = label(col, &font_cinzel_30, C_GOLD, 480);
     lbl_head  = label(col, &font_inter_22, C_MUTED, 460);
     lv_obj_set_style_text_letter_space(lbl_head, 3, 0);
+    img_pic   = lv_image_create(col);                 /* journey picture (question / brief) */
+    lv_obj_add_flag(img_pic, LV_OBJ_FLAG_HIDDEN);
     lbl_count = label(col, &font_cinzel_56, C_GOLD, 300);
     lbl_ref   = label(col, &font_cinzel_30, C_CREAM, 460);
     lbl_body  = label(col, &lv_font_montserrat_28, C_CREAM, 500);
@@ -189,6 +196,31 @@ void ui_journey_build(void)
     lv_timer_create(tick_cb, 100, NULL);
 }
 
+/* ---------------------------------------------------------------- picture */
+#define PIC_W 440                                  /* fits inside the round screen with the text */
+#define PIC_H 300
+static void set_picture(const char *name)
+{
+    if (!strcmp(name, s_pic_name)) return;         /* same picture: keep it */
+    strlcpy(s_pic_name, name, sizeof(s_pic_name));
+    lv_obj_add_flag(img_pic, LV_OBJ_FLAG_HIDDEN);
+    lv_image_set_src(img_pic, NULL);
+    if (s_pic.buf) lv_image_cache_drop(&s_pic.dsc);   /* same address, new pixels next time */
+    ball_jpeg_free(&s_pic);
+    if (!name[0]) return;
+    char path[200];
+    if (name[0] == '/') snprintf(path, sizeof(path), "%s", name);
+    else snprintf(path, sizeof(path), "%s/%s", CONTENT_MEDIA_DIR, name);
+    if (!ball_jpeg_load(path, &s_pic)) return;     /* logged; the text still shows */
+    int w = s_pic.dsc.header.w, h = s_pic.dsc.header.h;
+    if (w > PIC_W) { h = h * PIC_W / w; w = PIC_W; }
+    if (h > PIC_H) { w = w * PIC_H / h; h = PIC_H; }
+    lv_image_set_src(img_pic, &s_pic.dsc);
+    lv_image_set_inner_align(img_pic, LV_IMAGE_ALIGN_CONTAIN);
+    lv_obj_set_size(img_pic, w, h);
+    lv_obj_remove_flag(img_pic, LV_OBJ_FLAG_HIDDEN);
+}
+
 /* ---------------------------------------------------------------- update */
 static void rebuild(const jv_view_t *v)
 {
@@ -203,6 +235,7 @@ static void rebuild(const jv_view_t *v)
     set_text(lbl_ref, v->ref);
     set_text(lbl_body, v->body);
     set_text(lbl_hint, v->hint);
+    set_picture(v->mode == JV_DARK && !v->image[0] ? "" : v->image);
 
     lv_obj_clean(box_choices);
     for (int i = 0; i < v->nchoices; i++) button(box_choices, v->choices[i], 480, choice_cb, (void *)(intptr_t)i, NULL);

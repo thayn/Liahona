@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS "main.c" "ui.c" "sensors.c" "gps.c" "nfc.c" "lora.c" "leds.c"
          "inputs.c" "storage.c" "audio_test.c" "ui_compass.c"
-         "journey_port.c" "ui_journey.c" "update.c" "ui_cal.c" "c6_update.c" "logbuf.c"
+         "journey_port.c" "ui_journey.c" "update.c" "ui_cal.c" "c6_update.c" "logbuf.c" "ball_jpeg.c"
          "fonts/font_cinzel_56.c" "fonts/font_cinzel_bold_46.c"
          "fonts/font_cinzel_30.c" "fonts/font_inter_22.c"
     INCLUDE_DIRS "."
@@ -9,7 +9,7 @@ idf_component_register(
              esp_driver_rmt fatfs app_update nvs_flash
              esp_timer liahona_radio journey minimp3 cjson
              esp_wifi esp_netif esp_event esp_http_client esp_https_ota mbedtls
-             esp_hosted esp_app_format esp_system
+             esp_hosted esp_app_format esp_system esp_driver_jpeg
 )
 
 # logbuf.c records a crash's reason and registers in the log ring before the

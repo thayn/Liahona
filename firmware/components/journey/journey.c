@@ -756,6 +756,7 @@ void journey_view(jv_view_t *v)
 
     if (E.mode == JV_BRIEF) {
         cJSON *b = obj(E.phase == PH_TBRIEF ? task_obj() : st, "brief");
+        copy(v->image, sizeof(v->image), str(b, "image"));
         copy(v->ref, sizeof(v->ref), str(b, "ref"));
         copy(v->body, sizeof(v->body), str(b, "text"));
         if (!v->body[0] && v->ref[0]) snprintf(v->body, sizeof(v->body), "Read %s together.", v->ref);
@@ -770,6 +771,7 @@ void journey_view(jv_view_t *v)
     if (E.mode == JV_DARK) {
         if (E.dark_scripted) {
             cJSON *b = obj(tk, "brief");
+            copy(v->image, sizeof(v->image), str(b, "image"));
             copy(v->ref, sizeof(v->ref), str(b, "ref"));
             copy(v->body, sizeof(v->body), str(b, "text"));
         } else {
@@ -788,6 +790,7 @@ void journey_view(jv_view_t *v)
 
     /* JV_TASK */
     if (E.deadline) v->countdown_s = (int)((E.deadline - t + 999) / 1000);
+    if (E.phase != PH_TRAVEL) copy(v->image, sizeof(v->image), str(tk, "image"));
     if (E.phase == PH_TRAVEL) {
         const cJSON *tr = task_travel();
         copy(v->kind, sizeof(v->kind), "checkin");
