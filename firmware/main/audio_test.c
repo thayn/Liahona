@@ -66,6 +66,7 @@ static void play_tone(float hz, int ms)
 
 /* ---------------------------------------------------------------- output with fades */
 typedef struct { long played, total; } outpos_t;
+static float s_env;                    /* peak follower for levelling (reset per file) */
 
 /* Write mono samples, fading in at the start and out at the end of the window. */
 static void out_mono(int16_t *s, int n, outpos_t *o)
@@ -76,7 +77,17 @@ static void out_mono(int16_t *s, int n, outpos_t *o)
         float g = 1.0f;
         if (k < FADE_SAMPLES) g = (float)k / FADE_SAMPLES;
         if (left < FADE_SAMPLES) g = (float)left / FADE_SAMPLES;
-        float v = s[i] * g * AUDIO_FILE_GAIN;
+        /* levelling: songs are mastered far below a full-scale tone, and the
+         * ball's small speaker needs every bit. Follow the peaks (instant
+         * attack, ~0.5 s release) and boost so they reach AUDIO_TARGET_PEAK. */
+        float x = s[i] * g, a = fabsf(x);
+        if (a > s_env) s_env = a; else s_env *= 0.99995f;
+        float boost = AUDIO_TARGET_PEAK / (s_env > 1500.0f ? s_env : 1500.0f);
+        if (boost > AUDIO_MAX_BOOST) boost = AUDIO_MAX_BOOST;
+        if (boost < 1.0f) boost = 1.0f;
+        float v = x * boost;
+        if (v > 30000.0f) v = 30000.0f + (v - 30000.0f) * 0.25f;           /* soft knee */
+        else if (v < -30000.0f) v = -30000.0f + (v + 30000.0f) * 0.25f;
         s[i] = (int16_t)(v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : v);
     }
     esp_codec_dev_write(s_spk, s, n * sizeof(int16_t));
@@ -198,6 +209,7 @@ static void play_mp3(FILE *f, int start_ms, int dur_ms)
 /* ---------------------------------------------------------------- task */
 static void play_file(const audio_req_t *r)
 {
+    s_env = 8000.0f;
     FILE *f = fopen(r->path, "rb");
     if (!f) { ESP_LOGW(TAG, "can't open %s (is it on the SD card? only MP3 and WAV are sent to the ball)", r->path); return; }
     ESP_LOGI(TAG, "playing %s from %d ms for %d ms", r->path, r->start_ms, r->dur_ms);
