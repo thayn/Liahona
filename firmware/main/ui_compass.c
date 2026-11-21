@@ -7,7 +7,7 @@
  *  - thin cream spindle   -> north
  *  - gold glowing spindle -> the station (or a marked spot); with no station
  *    it rests on north
- *  - distance in Cinzel ("340 m") with a small caption ("TO MARKED SPOT")
+ *  - distance in Cinzel ("340 ft", or metres with DISTANCE_IN_FEET 0) with a small caption ("TO MARKED SPOT")
  *
  * All sizes are the concept's 380 px drawing scaled to the 720 px screen.
  */
@@ -241,8 +241,14 @@ void ui_compass_tick(const liahona_state_t *s)
         double dist, brg;
         dist_bearing(s->gps_lat, s->gps_lon, s->target_lat, s->target_lon, &dist, &brg);
         want = (float)brg - s_heading;
+#if DISTANCE_IN_FEET
+        double ft = dist * 3.28084;
+        if (ft < 1000) snprintf(big, sizeof(big), "%d ft", (int)(ft + 0.5));
+        else snprintf(big, sizeof(big), "%.1f mi", ft / 5280.0);
+#else
         if (dist < 1000) snprintf(big, sizeof(big), "%d m", (int)(dist + 0.5));
         else snprintf(big, sizeof(big), "%.1f km", dist / 1000.0);
+#endif
         snprintf(small, sizeof(small), "TO MARKED SPOT");
     } else {
         /* no station: the gold spindle rests on north (no drifting, which
