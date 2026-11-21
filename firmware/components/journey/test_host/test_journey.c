@@ -187,6 +187,35 @@ int main(int argc, char **argv)
     }
 
     journey_unload();
+    /* Travel before a task (and the task's own brief): point to the place, never
+     * name it; the right tag (or a station leader) arrives; then brief, then task. */
+    {
+        static const char *tj =
+            "{\"format\":1,\"id\":\"travel-test\",\"title\":\"T\",\"places\":{"
+            "\"oak\":{\"name\":\"Old oak by the creek\",\"lat\":47.8,\"lon\":-122.3,\"tags\":[\"04BB000000000001\"]},"
+            "\"gate\":{\"name\":\"Gate\",\"tags\":[\"04BB000000000002\"]}},"
+            "\"stages\":[{\"name\":\"S\",\"gather\":\"none\",\"tasks\":["
+            "{\"type\":\"intro\",\"text\":\"Hello there\",\"travel\":{\"to\":\"oak\",\"mode\":\"pointers\",\"limit\":300},"
+            "\"brief\":{\"text\":\"Read this at the oak\"}},"
+            "{\"type\":\"intro\",\"text\":\"Second\",\"travel\":{\"to\":\"gate\",\"mode\":\"directions\"}}]}]}";
+        saved_stage = -1;
+        T = 0;
+        CHECK(journey_load(tj, rj, 1, &h, err, sizeof err) == 0);
+        view();
+        CHECK(V.mode == JV_TASK && !strcmp(V.kind, "checkin") && V.has_target && V.countdown_s == 300);
+        CHECK(!strstr(V.body, "oak") && !strstr(V.body, "Old"));
+        journey_tag("04BB000000000002"); view(); CHECK(strstr(V.status, "Not this place") && !strcmp(V.kind, "checkin"));
+        journey_tag(ANN); view(); CHECK(strstr(V.status, "medallion"));
+        journey_tag("04BB000000000001"); view();
+        CHECK(V.mode == JV_BRIEF && strstr(V.body, "Read this at the oak") && strstr(V.status, "Found it"));
+        journey_continue(); view();
+        CHECK(V.mode == JV_TASK && !strcmp(V.kind, "intro") && strstr(V.body, "Hello there") && V.countdown_s < 0);
+        journey_continue(); view();                                   /* next task: travel by directions */
+        CHECK(V.mode == JV_TASK && !strcmp(V.kind, "checkin") && !V.has_target && !strstr(V.body, "Gate"));
+        journey_leader(2, 0); view();                                 /* leader Skip skips the walk only */
+        CHECK(V.mode == JV_TASK && !strcmp(V.kind, "intro") && strstr(V.body, "Second"));
+    }
+
     free(jj); free(rj);
     printf(fails ? "%d FAILED\n" : "journey host test passed\n", fails);
     return fails ? 1 : 0;
