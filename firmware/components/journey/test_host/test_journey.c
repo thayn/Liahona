@@ -88,7 +88,7 @@ int main(int argc, char **argv)
     advance(46); CHECK(V.can_hint);
     journey_hint(); view(); CHECK(strstr(V.hint, "1 Nephi 2:4"));
     journey_choice(0); view();
-    CHECK(V.mode == JV_DARK && V.countdown_s == 30 && led_mode == 2);
+    CHECK(V.mode == JV_DARK && V.countdown_s == 30 && led_mode == 4);
     journey_tag(ANN); journey_tag(BEN); view(); CHECK(V.mode == JV_DARK && strstr(V.status, "2 of 3"));
     journey_tag(CAL); view(); CHECK(V.mode == JV_TASK && !strcmp(V.kind, "question"));   /* unity restore */
     /* the same question again: the last tap (a team leader's card, still on the reader)

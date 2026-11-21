@@ -147,22 +147,35 @@ static void update_tap_cb(lv_event_t *e)
     update_start();
 }
 
-/* tap the Journey row twice (within 4 s) = back to step 1, progress cleared */
-static int64_t s_restart_armed_until;
-static void journey_tap_cb(lv_event_t *e)
+/* Journey row: tap twice (within 4 s) = skip this step, like a leader's Skip.
+ * Hold it 3 s = back to step 1, progress cleared. */
+static int64_t s_skip_armed_until;
+static bool journey_ok(void)
 {
     bool active;
     STATE_LOCK(); active = g_state.journey_active; STATE_UNLOCK();
-    if (!active) return;
+    return active;
+}
+static void journey_tap_cb(lv_event_t *e)
+{
+    if (!journey_ok()) return;
     int64_t now = esp_timer_get_time() / 1000;
-    if (now < s_restart_armed_until) {
-        s_restart_armed_until = 0;
-        journey_ui_restart();
+    if (now < s_skip_armed_until) {
+        s_skip_armed_until = 0;
+        journey_ui_skip();
         audio_test_beep();
-        ESP_LOGI("ui", "journey restarted from the self-test");
+        ESP_LOGI("ui", "step skipped from the self-test");
     } else {
-        s_restart_armed_until = now + 4000;
+        s_skip_armed_until = now + 4000;
     }
+}
+static void journey_hold_cb(lv_event_t *e)
+{
+    if (!journey_ok()) return;
+    s_skip_armed_until = 0;
+    journey_ui_restart();
+    audio_test_beep();
+    ESP_LOGI("ui", "journey restarted from the self-test");
 }
 
 /* tap the Compass row = calibration screen (ui_cal.c) */
@@ -216,7 +229,8 @@ static void build_test(void)
     lv_obj_add_event_cb(row_val[R_FW], update_tap_cb, LV_EVENT_CLICKED, NULL);
 
     lv_obj_add_flag(row_val[R_JOURNEY], LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(row_val[R_JOURNEY], journey_tap_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(row_val[R_JOURNEY], journey_tap_cb, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_add_event_cb(row_val[R_JOURNEY], journey_hold_cb, LV_EVENT_LONG_PRESSED, NULL);
 
     lv_obj_add_flag(row_val[R_MAG], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(row_val[R_MAG], cal_tap_cb, LV_EVENT_CLICKED, NULL);
@@ -326,8 +340,8 @@ static void refresh_cb(lv_timer_t *t)
     set_row(R_AUDIO, s.audio, s.audio == TEST_PASS ? "PASS" : s.audio == TEST_FAIL ? "FAIL" : "press Beep");
 
     if (!s.journey_active) snprintf(buf, sizeof(buf), "none loaded");
-    else if (esp_timer_get_time() / 1000 < s_restart_armed_until) snprintf(buf, sizeof(buf), "tap again to restart");
-    else if (s.stage) snprintf(buf, sizeof(buf), "step %d  (tap twice to restart)", s.stage);
+    else if (esp_timer_get_time() / 1000 < s_skip_armed_until) snprintf(buf, sizeof(buf), "tap again to skip this step");
+    else if (s.stage) snprintf(buf, sizeof(buf), "step %d  (2 taps: skip, hold: restart)", s.stage);
     else snprintf(buf, sizeof(buf), "not started");
     set_row(R_JOURNEY, s.journey_active ? TEST_PASS : TEST_PENDING, buf);
 

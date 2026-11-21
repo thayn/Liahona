@@ -1,6 +1,7 @@
 /*
  * Band LEDs (WS2812 / NeoPixel) on GPIO47 via the 74AHCT125 level shifter.
  * Mode 0: warm gold "breathing" glow. Mode 1: red/green/blue test cycle. 2: off.
+ * Mode 3: gold pulse (new stage). Mode 4: slow red glow (the Liahona has gone dark).
  */
 #include <math.h>
 #include "esp_log.h"
@@ -48,6 +49,11 @@ static void leds_task(void *arg)
             float v = 0.5f - 0.5f * cosf(k * 0.2f);
             fill((int)(255 * v), (int)(170 * v), (int)(50 * v));
             if (k > 94) { t0 = -1; s_mode = 0; }
+            break;
+        }
+        case 4: {                                   /* dark: slow, deep red breathing */
+            float k = 0.25f + 0.75f * (0.5f + 0.5f * sinf(step * 0.04f));
+            fill((int)(255 * k), 0, 0);
             break;
         }
         case 0: {                                   /* idle: gold breathing */
