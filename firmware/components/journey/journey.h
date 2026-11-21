@@ -46,6 +46,7 @@ typedef struct {
     char      continue_label[24];
     bool      can_hint;                 /* a hint is available now */
     char      hint[200];                /* last hint shown */
+    char      image[96];                /* picture to show (media file name), "" if none */
     bool      can_replay;               /* audio: play again */
     bool      audio;                    /* this task has audio */
     int       countdown_s;              /* -1 = none */
