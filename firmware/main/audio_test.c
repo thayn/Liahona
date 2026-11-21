@@ -37,6 +37,7 @@ typedef struct {
 static void set_rate(int rate)
 {
     if (rate == s_rate) return;
+    ESP_LOGI(TAG, "speaker rate %d -> %d Hz", s_rate, rate);
     if (s_rate) esp_codec_dev_close(s_spk);
     esp_codec_dev_sample_info_t fs = { .sample_rate = rate, .channel = 1, .bits_per_sample = 16 };
     esp_codec_dev_open(s_spk, &fs);
@@ -156,6 +157,8 @@ static void play_mp3(FILE *f, int start_ms, int dur_ms)
 
     size_t have = 0, pos = 0;
     long skip = -1, want = -1;            /* in samples, set once the rate is known */
+    long frames = 0, empty = 0, resync = 0, bytes = ftell(f);
+    int hz = 0, chans = 0;
     outpos_t o = { 0, 0 };
     bool eof = false;
     while (!s_stop) {
@@ -164,14 +167,16 @@ static void play_mp3(FILE *f, int start_ms, int dur_ms)
             have -= pos; pos = 0;
             size_t got = fread(buf + have, 1, sizeof(buf) - have, f);
             if (!got) eof = true;
+            bytes += got;
             have += got;
         }
         if (pos >= have) break;
         mp3dec_frame_info_t info;
         int n = mp3dec_decode_frame(&dec, buf + pos, have - pos, pcm, &info);
-        if (info.frame_bytes == 0) { if (eof) break; pos = have; continue; }
+        if (info.frame_bytes == 0) { resync++; if (eof) break; pos = have; continue; }
         pos += info.frame_bytes;
-        if (n <= 0) continue;
+        if (n <= 0) { empty++; continue; }
+        frames++; hz = info.hz; chans = info.channels;
         if (skip < 0) {
             set_rate(info.hz);
             skip = (long)start_ms * info.hz / 1000;
@@ -186,6 +191,8 @@ static void play_mp3(FILE *f, int start_ms, int dur_ms)
         if (m) out_mono(mono, m, &o);
         if (o.played >= want) break;
     }
+    ESP_LOGI(TAG, "mp3: %ld frames decoded (%d Hz, %d ch), %ld empty, %ld resyncs, %ld bytes read, %ld samples played%s",
+             frames, hz, chans, empty, resync, bytes, o.played, s_stop ? ", STOPPED early" : "");
 }
 
 /* ---------------------------------------------------------------- task */
