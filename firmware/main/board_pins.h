@@ -73,6 +73,7 @@
 #define CONTENT_JOURNEY     CONTENT_DIR "/journey.json"
 #define CONTENT_ROSTER      CONTENT_DIR "/roster.json"
 #define CONTENT_MEDIA_DIR   CONTENT_DIR "/media"
+#define DISTANCE_IN_FEET    1             /* compass distance: 1 = feet/miles, 0 = metres/km */
 #define AUDIO_VOLUME        100           /* codec output, 0-100 */
 #define AUDIO_MAX_BOOST     16.0f         /* journey audio is levelled up to this much (x16 = +24 dB) */
 #define AUDIO_TARGET_PEAK   32000.0f      /* level the loud parts of a song to this (of 32767) */
