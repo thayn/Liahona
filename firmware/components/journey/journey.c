@@ -45,6 +45,9 @@ typedef struct {
     int      ntapped;
     int      leader_taps;           /* consecutive leader taps during a roll call */
 
+    /* before a task: travel to its place, then its brief (see start_task) */
+    int      phase;                 /* PH_RUN, PH_TRAVEL, PH_TBRIEF */
+
     /* task runtime */
     int64_t  task_start;
     int64_t  deadline;              /* 0 = none */
@@ -65,6 +68,8 @@ typedef struct {
     int64_t  flash_until;
     char     dark_reason[64];
 } engine_t;
+
+enum { PH_RUN = 0, PH_TRAVEL, PH_TBRIEF };
 
 static engine_t E;
 
@@ -230,6 +235,15 @@ static int task_start_ms(void) { return (int)(num(task_obj(), "start", 0) * 1000
 
 /* ------------------------------------------------------------------ flow */
 static void start_stage(int i);
+static void after_travel(void);
+static void begin_task(void);
+static const cJSON *task_travel(void)
+{
+    const cJSON *tr = obj(task_obj(), "travel");
+    if (!str(tr, "to") && E.task == 0) tr = obj(stage_obj(), "travel");
+    return str(tr, "to") ? tr : NULL;
+}
+
 static void start_task(int t);
 
 static void set_deadline(int seconds)
@@ -281,6 +295,44 @@ static void start_task(int t)
     if (t >= cJSON_GetArraySize(tasks)) { start_stage(E.stage + 1); return; }
     E.task = t;
     E.mode = JV_TASK;
+    E.phase = PH_RUN;
+    E.tag_quiet_until = 0;
+    E.hint[0] = 0;
+    clear_taps();
+    /* "Travel before this Task" (or the stage's "Travel before the first Task"):
+     * point them to the place first. A check-in does its own travelling. */
+    const cJSON *tr = task_travel();
+    if (tr && !is("checkin")) {
+        E.phase = PH_TRAVEL;
+        E.task_start = now();
+        set_deadline((int)num(tr, "limit", 0));
+        if (E.h.leds) E.h.leds(0);
+        save();
+        bump();
+        return;
+    }
+    after_travel();
+}
+
+/* Arrived (or no travel): the task's own brief, if any, then the task. */
+static void after_travel(void)
+{
+    cJSON *b = obj(task_obj(), "brief");
+    if (!is("scripted_darken") && b && (str(b, "text") || str(b, "ref"))) {
+        E.phase = PH_TBRIEF;
+        E.mode = JV_BRIEF;
+        E.deadline = 0;
+        save();
+        bump();
+        return;
+    }
+    begin_task();
+}
+
+static void begin_task(void)
+{
+    E.mode = JV_TASK;
+    E.phase = PH_RUN;
     E.task_start = now();
     E.tag_quiet_until = 0;
     E.text_hints_used = E.audio_hints_used = E.replays_used = 0;
@@ -289,7 +341,7 @@ static void start_task(int t)
     clear_taps();
     cJSON *tk = task_obj();
     int limit = (int)num(tk, "limit", 0);
-    if (!limit) limit = (int)num(obj(tk, "travel"), "limit", 0);
+    if (!limit && is("checkin")) limit = (int)num(obj(tk, "travel"), "limit", 0);
     if (!limit) limit = (int)num(stage_obj(), "limit", 0);
     set_deadline(limit);
 
@@ -481,6 +533,19 @@ void journey_tag(const char *uid)
 
     case JV_TASK:
         if (p && now() < E.tag_quiet_until) return;           /* the same medallions, still on the reader */
+        if (E.phase == PH_TRAVEL) {
+            const char *to = str(task_travel(), "to");
+            if (place && to && !strcmp(place, to)) {
+                uint8_t b[10]; int n;
+                uid_bytes(uid, b, &n);
+                if (E.h.checkin) E.h.checkin(b, n, station);
+                flash("Found it!");
+                after_travel();
+            } else if (place) flash("Not this place");
+            else if (p && is_leader(p) && member_index(p) < 0) after_travel();   /* a station leader vouches */
+            else if (p) flash("That's a medallion. Find the place's tag.");
+            return;
+        }
         break;
     default:
         return;
@@ -543,7 +608,7 @@ void journey_choice(int i)
 void journey_continue(void)
 {
     if (!journey_loaded()) return;
-    if (E.mode == JV_BRIEF) { start_task(0); return; }
+    if (E.mode == JV_BRIEF) { if (E.phase == PH_TBRIEF) begin_task(); else start_task(0); return; }
     if (E.mode == JV_ERROR || E.mode == JV_DONE) return;
     if (E.mode == JV_TASK && (is("intro") || is("audio_clue"))) complete_task();
 }
@@ -600,12 +665,15 @@ void journey_leader(int cmd, int arg)
     case 1:                                       /* unlock: open whatever is waiting */
         if (E.mode == JV_GATHER) enter_brief();
         else if (E.mode == JV_DARK) restore();
-        else if (E.mode == JV_BRIEF) start_task(0);
+        else if (E.mode == JV_BRIEF) { if (E.phase == PH_TBRIEF) begin_task(); else start_task(0); }
+        else if (E.mode == JV_TASK && E.phase == PH_TRAVEL) after_travel();   /* unlock: count them as arrived */
         else if (E.mode == JV_TASK) complete_task();
         break;
     case 2:                                       /* skip the current task / stage start */
         if (E.mode == JV_DARK) { E.mode = JV_TASK; if (E.h.leds) E.h.leds(0); complete_task(); }
+        else if (E.mode == JV_BRIEF && E.phase == PH_TBRIEF) begin_task();
         else if (E.mode == JV_GATHER || E.mode == JV_BRIEF) start_task(0);
+        else if (E.mode == JV_TASK && E.phase == PH_TRAVEL) after_travel();   /* skip the walk, not the task */
         else if (E.mode == JV_TASK) complete_task();
         break;
     case 5:                                       /* jump to stage <arg> (1-based) */
@@ -633,6 +701,23 @@ static const char *STD_INTRO =
     "I am the Liahona. I will point the way, and I will write upon myself what you need to know. "
     "I work by your faith, diligence and heed. If you quarrel or answer carelessly, I will grow dark. "
     "Work together and I will shine again.";
+
+/* "Journey on": point to a place without ever naming it. */
+static void travel_view(jv_view_t *v, const cJSON *tr, const char *to)
+{
+    const cJSON *pl = obj(E.places, to);
+    double lat = num(pl, "lat", 1000), lon = num(pl, "lon", 1000);
+    const char *mode = str(tr, "mode");
+    copy(v->heading, sizeof(v->heading), mode && !strcmp(mode, "race") ? "Race" : "Journey on");
+    if (lat < 999 && lon < 999 && !(mode && !strcmp(mode, "directions"))) {
+        v->has_target = true;
+        v->target_lat = lat;
+        v->target_lon = lon;
+        copy(v->body, sizeof(v->body), "Follow the gold spindle, then tap the tag there.");  /* no place name: finding it is the point */
+    } else {
+        copy(v->body, sizeof(v->body), "Find the place, then tap the tag there.");  /* never name it */
+    }
+}
 
 void journey_view(jv_view_t *v)
 {
@@ -670,7 +755,7 @@ void journey_view(jv_view_t *v)
     }
 
     if (E.mode == JV_BRIEF) {
-        cJSON *b = obj(st, "brief");
+        cJSON *b = obj(E.phase == PH_TBRIEF ? task_obj() : st, "brief");
         copy(v->ref, sizeof(v->ref), str(b, "ref"));
         copy(v->body, sizeof(v->body), str(b, "text"));
         if (!v->body[0] && v->ref[0]) snprintf(v->body, sizeof(v->body), "Read %s together.", v->ref);
@@ -703,6 +788,12 @@ void journey_view(jv_view_t *v)
 
     /* JV_TASK */
     if (E.deadline) v->countdown_s = (int)((E.deadline - t + 999) / 1000);
+    if (E.phase == PH_TRAVEL) {
+        const cJSON *tr = task_travel();
+        copy(v->kind, sizeof(v->kind), "checkin");
+        travel_view(v, tr, str(tr, "to"));
+        return;
+    }
     const char *type = task_type();
     const char *prompt = str(tk, "prompt");
     bool ready = hint_ready();
@@ -736,18 +827,7 @@ void journey_view(jv_view_t *v)
         const char *to = str(tr, "to");
         const cJSON *tags = obj(tk, "tags");
         if (!to && cJSON_GetArraySize(tags) > 0) to = cJSON_GetArrayItem(tags, 0)->valuestring;
-        const cJSON *pl = obj(E.places, to);
-        double lat = num(pl, "lat", 1000), lon = num(pl, "lon", 1000);
-        const char *mode = str(tr, "mode");
-        copy(v->heading, sizeof(v->heading), mode && !strcmp(mode, "race") ? "Race" : "Journey on");
-        if (lat < 999 && lon < 999 && !(mode && !strcmp(mode, "directions"))) {
-            v->has_target = true;
-            v->target_lat = lat;
-            v->target_lon = lon;
-            copy(v->body, sizeof(v->body), "Follow the gold spindle, then tap the tag there.");  /* no place name: finding it is the point */
-        } else {
-            copy(v->body, sizeof(v->body), "Find the place, then tap the tag there.");  /* never name it */
-        }
+        travel_view(v, tr, to);
         if (cJSON_GetArraySize(tags) > 1) snprintf(v->body + strlen(v->body), sizeof(v->body) - strlen(v->body),
                                                    " (%d places count.)", cJSON_GetArraySize(tags));
     } else if (!strcmp(type, "gather_fragments")) {
