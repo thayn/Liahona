@@ -18,8 +18,13 @@ Nothing else changes. The base cap no longer carries the reader.
 - **Print:** lower shell upright as before. The well walls are 60°, and the star and ring print without supports. Lid ring upside down: the tongue and pins point up, so no supports are needed for them.
 - **160 mm ball:** it has no room for the reader at the front (the seam wedge and base-cap tabs are in the way), so it keeps the reader on the base cap. Its lid catch and pins are in `out/`.
 
-### Optional: "curious workmanship" shells (engraved plates)
-`out/175mm/plates/` has the upper and lower shell with **framed plates engraved with rows of invented characters** in place of the leaf triangles. Everything else stays the same, including the band, the seal and the rivets. They fit the same parts. Rebuild with `LIAHONA_SIZE=175 LIAHONA_ORNAMENT=plates python3 liahona.py upper_shell lower_shell`. The engraving is 0.7 mm lines, 0.55 mm deep: print with a 0.4 mm nozzle at 0.12–0.16 mm layers so the characters stay crisp.
+### Optional: "curious workmanship" engraved version
+`out/175mm/engraved/` has a full alternative outer set: `upper_shell`, `lower_shell`, `bezel_ring`, `lid_ring` and `base_cap`. The lid cap keeps its leaves, and everything inside is the same as the regular parts. It includes:
+- **Continuous engraved bands** above and below the tan band, with no tiles. Each has a double border line and a beaded edge, and rows of characters packed edge to edge all the way round.
+- **Stacked plate edges:** fine horizontal lines on the bezel, lid ring and base cap, so the ball reads as a stack of thin plates.
+- **Three binding rings** raised on the back, over the hinge side.
+
+The characters are invented, in a flowing style. To use characters traced from the "Caractors" document, put a `caractors.json` next to `liahona.py`. Its format is a list of `{"w": width, "strokes": [[[x, y], ...], ...]}` in a 1-unit-tall box. Then rebuild with `LIAHONA_SIZE=175 LIAHONA_ORNAMENT=engraved python3 liahona.py upper_shell lower_shell bezel_ring lid_ring base_cap`, which takes about 12 minutes. Print with a 0.4 mm nozzle at 0.12–0.16 mm layers. The engraving is 0.65 mm lines, 0.55 mm deep.
 
 ## Sizes
 | Size | Screen | Glass | Build |

@@ -340,89 +340,168 @@ def sprig(scale=1.0):
 
 
 
-# ---- "curious workmanship": engraved plates ------------------------------------------------
-def glyph(i, u=1.0):
-    """An invented character (deterministic per i), drawn as strokes on a 3 x 4 grid,
-    `u` mm per grid step. Returns a shapely geometry (0.7 mm wide strokes)."""
+# ---- "curious workmanship": continuous engraved bands -------------------------------------
+def _bez(p0, p1, p2, p3, n=14):
+    out = []
+    for i in range(n + 1):
+        t = i / n
+        a, b, c, d = (1 - t) ** 3, 3 * t * (1 - t) ** 2, 3 * t * t * (1 - t), t ** 3
+        out.append((a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]))
+    return out
+
+
+def glyph_invented(i, h=4.4, w=0.65):
+    """A flowing, hieratic-style invented character (deterministic per i), about h tall.
+    Returns (shapely geometry centred on 0,0, width)."""
     import random
-    rnd = random.Random(1830 + i * 7919)
-    gp = lambda x, y: (x * u, y * u)
+    r = random.Random(5011 + i * 104729)
+    W = h * 0.55
+    P = lambda x, y: (x * W, y * h)
     strokes = []
-    # a spine most characters share: vertical, slanted or a bar
-    kind = rnd.choice(("v", "v", "slant", "bar", "hook"))
-    x0 = rnd.choice((0, 1, 2))
-    if kind == "v":
-        strokes.append(LineString([gp(x0, 0), gp(x0, 3)]))
-    elif kind == "slant":
-        strokes.append(LineString([gp(0, rnd.choice((0, 1))), gp(2, 3)]))
-    elif kind == "bar":
-        y = rnd.choice((1, 2))
-        strokes.append(LineString([gp(0, y), gp(2, y)]))
+    kind = r.choice(["stem", "stem", "loop", "s", "arch", "hook", "cross", "zig"])
+    jit = lambda: r.uniform(-0.08, 0.08)
+    if kind == "stem":
+        x = r.choice([0.3, 0.5, 0.7])
+        strokes.append(_bez(P(x + jit(), 1), P(x + 0.15, 0.65), P(x - 0.15, 0.35), P(x + jit(), 0)))
+    elif kind == "loop":
+        strokes.append(_bez(P(0.2, 0.0), P(0.9, 0.5), P(0.9, 1.05), P(0.45, 0.95)))
+        strokes.append(_bez(P(0.45, 0.95), P(0.05, 0.85), P(0.3, 0.45), P(0.85, 0.3)))
+    elif kind == "s":
+        strokes.append(_bez(P(0.85, 0.95), P(-0.1, 1.0), P(1.1, 0.0), P(0.15, 0.05)))
+    elif kind == "arch":
+        strokes.append(_bez(P(0.1, 0.0), P(0.0, 1.15), P(1.0, 1.15), P(0.9, 0.0)))
+    elif kind == "hook":
+        strokes.append(_bez(P(0.5, 1.0), P(0.5, 0.4), P(0.5, 0.0), P(0.05, 0.15)))
+        strokes.append([P(0.15, 0.75), P(0.85, 0.75)])
+    elif kind == "cross":
+        strokes.append([P(0.5, 1.0), P(0.5, 0.0)])
+        strokes.append(_bez(P(0.05, 0.55), P(0.35, 0.75), P(0.65, 0.35), P(0.95, 0.55)))
     else:
-        strokes.append(LineString([gp(1, 3), gp(1, 1), gp(0.3, 0.3), gp(1.4, 0)]))
-    for _ in range(rnd.choice((1, 2, 2, 3))):
-        t = rnd.random()
-        if t < 0.35:                                       # short tick or crossbar
-            a = (rnd.choice((0, 1, 2)), rnd.choice((0, 1, 2, 3)))
-            b = (min(2, max(0, a[0] + rnd.choice((-1, 1)))), min(3, max(0, a[1] + rnd.choice((-1, 0, 1)))))
-            if a != b:
-                strokes.append(LineString([gp(*a), gp(*b)]))
-        elif t < 0.7:                                      # little arc / loop
-            cx, cy = rnd.choice((0.5, 1, 1.5)), rnd.choice((0.7, 1.5, 2.3))
-            a0 = rnd.choice((0, 90, 180, 270))
-            arc = [(cx * u + 0.6 * u * math.cos(math.radians(a0 + k * 15)),
-                    cy * u + 0.6 * u * math.sin(math.radians(a0 + k * 15))) for k in range(13)]
-            strokes.append(LineString(arc))
-        else:                                              # dot
-            strokes.append(SPoint(*gp(rnd.choice((0, 1, 2)), rnd.choice((0, 3)))).buffer(0.25))
-    g = unary_union([st.buffer(0.35, 8) for st in strokes])
-    return affinity.translate(g, -u, -1.5 * u)            # centred on the cell
+        strokes.append([P(0.1, 0.9), P(0.85, 0.75), P(0.15, 0.3), P(0.9, 0.1)])
+    for _ in range(r.choice([0, 1, 1, 2])):
+        t = r.random()
+        if t < 0.3:
+            strokes.append([P(r.uniform(0.1, 0.4), r.choice([1.0, 0.0])), P(r.uniform(0.6, 0.9), r.choice([1.0, 0.0]))])
+        elif t < 0.55:
+            strokes.append(("dot", P(r.choice([0.15, 0.85]), r.choice([0.2, 0.55, 0.95]))))
+        elif t < 0.8:
+            cx, cy = r.choice([0.2, 0.8]), r.choice([0.25, 0.75])
+            strokes.append(_bez(P(cx, cy + 0.12), P(cx + 0.2, cy + 0.15), P(cx + 0.2, cy - 0.15), P(cx - 0.05, cy - 0.1), 8))
+        else:
+            strokes.append([P(r.uniform(0.6, 0.9), 0.6), P(r.uniform(0.75, 1.0), 0.35)])
+    geoms = []
+    for st in strokes:
+        if st[0] == "dot":
+            geoms.append(SPoint(*st[1]).buffer(w * 0.6, 8))
+        else:
+            geoms.append(LineString(st).buffer(w / 2, 6))
+    return affinity.translate(unary_union(geoms), -W / 2, -h / 2), W
 
 
-def plate_row(z_lo, z_hi, n, phase=0.0, motif=True, seed=0):
-    """Framed plates between z_lo..z_hi, each engraved with rows of invented characters.
-    Same interface as triangle_row: (plates_gold, straps_tan, engraving_cutters)."""
-    la0, la1 = lat_of(z_lo), lat_of(z_hi)
-    if la0 > la1:
-        la0, la1 = la1, la0
-    step = 360.0 / n
-    lc = (la0 + la1) / 2
-    panels, cutters, feet = [], [], []
-    u = 1.45 * K                                            # character grid step (~4.4 mm tall)
-    for i in range(n):
-        tc = phase + i * step
-        xs = [gnomonic(tc, lc, d, 0)[0] for d in (-step / 2, step / 2)]
-        ys = [gnomonic(tc, lc, 0, d)[1] for d in (la0 - lc, la1 - lc)]
-        plate = SPoly([(xs[0], ys[0]), (xs[1], ys[0]), (xs[1], ys[1]), (xs[0], ys[1])]).buffer(
-            -S["STRAP_W"] / 2, join_style=2).buffer(-1.0).buffer(1.0)     # slightly rounded corners
-        panels.append(relief(plate, tc, lc, R - 0.4))
-        feet.append(cone_patch(plate, tc, lc, R0 - 0.5, R + 1.0))
-        if not motif:
-            continue
-        # engraved frame line, then rows of characters inside it
-        frame_line = plate.buffer(-1.3).exterior.buffer(0.35, 8)
-        inner = plate.buffer(-2.6)
-        bx0, by0, bx1, by1 = inner.bounds
-        cell_w, row_h = 3.2 * u, 4.6 * u
-        nrows = max(1, int((by1 - by0) // row_h))
-        ncols = max(1, int((bx1 - bx0) // cell_w))
-        oy = (by1 - by0 - nrows * row_h) / 2 + row_h / 2
-        ox = (bx1 - bx0 - ncols * cell_w) / 2 + cell_w / 2
-        chars = [frame_line]
-        for r in range(nrows):
-            for c in range(ncols):
-                g = glyph(seed * 997 + i * 61 + r * 17 + c, u)
-                chars.append(affinity.translate(g, bx0 + ox + c * cell_w, by1 - oy - r * row_h))
-        cutters.append(cone_patch(unary_union(chars).intersection(plate.buffer(-0.9)), tc, lc, R - 0.95, R + 1))
-    zone = shell(min(z_lo, z_hi), max(z_lo, z_hi), R, R0 - 0.3)
-    straps = zone.cut(*feet)
-    return union(panels), straps, [c for c in cutters if c is not None]
+def band_glyph(i, h):
+    """The i-th character for the bands: traced ones from caractors.json if present
+    (list of {"w":..., "strokes":[[[x,y],...],...]} in a unit-height box), else invented."""
+    import json
+    f = Path(__file__).parent / "caractors.json"
+    if f.exists():
+        chars = band_glyph.cache if hasattr(band_glyph, "cache") else json.loads(f.read_text())
+        band_glyph.cache = chars
+        c = chars[i % len(chars)]
+        g = unary_union([LineString([(x * h, y * h) for x, y in st]).buffer(0.325, 6) if len(st) > 1
+                         else SPoint(st[0][0] * h, st[0][1] * h).buffer(0.4, 8) for st in c["strokes"]])
+        W = c["w"] * h
+        return affinity.translate(g, -W / 2, -h / 2), W
+    return glyph_invented(i, h)
+
+
+def _groove(z, w=0.6, depth=0.55):
+    return (Sphere(R + 1) - Sphere(R - depth)) & zslab(z - w / 2, z + w / 2)
+
+
+def engraved_band(z_lo, z_hi, seed=0):
+    """A continuous raised band with a double engraved border and rows of characters
+    packed edge to edge all the way round. Returns (band, cutters, beads)."""
+    z_lo, z_hi = min(z_lo, z_hi), max(z_lo, z_hi)
+    band = raised_band(z_lo, z_hi)
+    cutters = [_groove(z) for z in (z_lo + 1.0, z_lo + 2.1, z_hi - 2.1, z_hi - 1.0)]
+    h = 4.4 * K
+    free = (z_hi - 2.9) - (z_lo + 2.9)
+    nrows = max(1, min(3, int((free + 1.2) // (h + 1.2))))
+    zc = (z_lo + z_hi) / 2
+    rows_z = [zc + (k - (nrows - 1) / 2) * (h + 1.4) for k in range(nrows)][::-1]
+    seg = 15.0
+    for ri, zr in enumerate(rows_z):
+        lr = lat_of(zr)
+        circ = 2 * math.pi * R0 * math.cos(math.radians(lr))
+        per_seg = {}
+        x, i = 0.6, 0
+        while True:
+            g, W = band_glyph(seed * 10007 + ri * 1009 + i, h)
+            if x + W > circ - 0.9:
+                break
+            th = (x + W / 2) / circ * 360.0
+            k = int(th // seg)
+            tc = k * seg + seg / 2
+            gx = gnomonic(tc, lr, th - tc, 0)[0]
+            per_seg.setdefault(k, []).append(affinity.translate(g, gx, 0))
+            x += W + 0.85
+            i += 1
+        for k, gs in per_seg.items():
+            cutters.append(cone_patch(unary_union(gs), k * seg + seg / 2, lr, R - 0.55, R + 1))
+    beads = []
+    for zb_ in (z_lo - 0.2, z_hi + 0.2):
+        lb = lat_of(zb_, R)
+        n = int(2 * math.pi * R * math.cos(math.radians(lb)) / 3.2)
+        beads += [bead(j * 360.0 / n, lb) for j in range(n)]
+    return band, [c for c in cutters if c is not None], beads
+
+
+def bead(theta, lat, rr=0.95, h=0.75):
+    n, e, _ = frame(theta, lat)
+    pts = [(0.0, -0.6), (rr, -0.6)]
+    rs = (rr * rr + h * h) / (2 * h)
+    for i in range(6):
+        a = math.acos((rs - h) / rs) * (1 - i / 5)
+        pts.append((rs * math.sin(a), rs * math.cos(a) - (rs - h)))
+    pts[-1] = (0.3, h)
+    pts.append((0.0, h))
+    dome = revolve(Face(Wire.make_polygon([Vector(r_, 0, z_) for r_, z_ in pts], close=True)), Axis.Z)
+    return Plane(origin=n * (R0 + 0.2), x_dir=e, z_dir=n) * dome
+
+
+def plate_edge_grooves(z0, z1, pitch=1.4):
+    """Fine horizontal lines: the ball reads as a stack of thin plates."""
+    out = []
+    z = min(z0, z1) + pitch / 2
+    while z < max(z0, z1) - pitch / 3:
+        out.append(_groove(z, 0.45, 0.4))
+        z += pitch
+    return out
+
+
+def binding_rings():
+    """Three D-rings on the back (over the hinge side), like the rings through the plates."""
+    tz0, tz1 = S["TRI_UPPER"]
+    lc = lat_of((tz0 + tz1) / 2)
+    hgt = (tz1 - tz0) - 3.0
+    out = []
+    for th in (255.0, 270.0, 285.0):
+        w_ = 11.0 * K
+        d = SPoly([(-w_ / 2, -hgt / 2), (w_ / 2, -hgt / 2), (w_ / 2, hgt / 2 - w_ / 2)] +
+                  [(w_ / 2 * math.cos(math.radians(a)), hgt / 2 - w_ / 2 + w_ / 2 * math.sin(math.radians(a)))
+                   for a in range(0, 181, 15)] + [(-w_ / 2, hgt / 2 - w_ / 2)])
+        ring_ = d.buffer(1.1).difference(d.buffer(-1.1))
+        out.append(cone_patch(ring_, th, lc, R - 0.6, R + 0.7))
+    return out
 
 
 def ornament_row(z_lo, z_hi, n, phase=0.0, seed=0):
-    if ORNAMENT == "plates":
-        return plate_row(z_lo, z_hi, n, phase, seed=seed)
-    return triangle_row(z_lo, z_hi, n, phase)
+    """(raised gold, tan straps or None, engraving cutters, extra gold e.g. beads)."""
+    if ORNAMENT == "engraved":
+        band, cut, beads = engraved_band(z_lo, z_hi, seed)
+        return band, None, cut, beads
+    panels, straps, cut = triangle_row(z_lo, z_hi, n, phase)
+    return panels, straps, cut, []
 
 
 def triangle_row(z_lo, z_hi, n, phase=0.0, motif=True):
@@ -624,18 +703,25 @@ def upper_shell():
     gold = shell(zs, zb, R0, RI)
     raised = [raised_band(tz1, zb), raised_band(bz1 + fw, tz0), raised_band(zs, bz0 - fw)]
     gold = gold + (union(raised) & zslab(zs, zb))
-    panels, strap_zone, engr = ornament_row(tz0, tz1, S["TRI_N"], seed=1)
-    tan_straps = strap_zone - Sphere(R0)
+    panels, strap_zone, engr, beads = ornament_row(tz0, tz1, S["TRI_N"], seed=1)
+    tan_straps = strap_zone - Sphere(R0) if strap_zone is not None else None
     gold = gold + panels
     if engr:
         gold = gold.cut(*engr)
-    for i in range(24):
-        gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2 + RIVET_LIFT, R))
+    if beads:
+        gold = gold.fuse(*beads)
+    if ORNAMENT == "engraved":
+        gold = gold.fuse(*binding_rings())
+    else:
+        for i in range(24):
+            gold = gold + rivet(i * 15.0 + 7.5, lat_of((tz1 + zb) / 2 + RIVET_LIFT, R))
     # band: gold removed, tan field at the base surface, clear letters through
     gold = gold - (zslab(bz0, bz1) & (Sphere(R + 3) - Sphere(RI - 0.02)))
     gold = gold + raised_band(bz1, bz1 + fw) + raised_band(bz0 - fw, bz0)
     clear = letters_solid(RI - 0.02, R0) & zslab(bz0, bz1)
-    tan = (shell(bz0, bz1, R0, RI - 0.01) - clear) + tan_straps
+    tan = shell(bz0, bz1, R0, RI - 0.01) - clear
+    if tan_straps is not None:
+        tan = tan + tan_straps
 
     # ---- interior --------------------------------------------------------
     zc1 = zs + S["SEAM_COLLAR_H"]
@@ -788,9 +874,12 @@ def bezel_ring():
     cav = cav - union(keep)
     gold = gold - cav
     # rivets round the rim
-    for i in range(24):
-        if abs(((i * 15.0 - 270.0 + 180) % 360) - 180) > 25:
-            gold = gold + rivet(i * 15.0, lat_of((zb + Z_LID) / 2, R))
+    if ORNAMENT == "engraved":
+        gold = gold.cut(*plate_edge_grooves(zb + 0.8, Z_LID - 0.8))      # stacked plate edges
+    else:
+        for i in range(24):
+            if abs(((i * 15.0 - 270.0 + 180) % 360) - 180) > 25:
+                gold = gold + rivet(i * 15.0, lat_of((zb + Z_LID) / 2, R))
     # bayonet slots
     gold = gold - bayonet_slots(SPIGOT_R_OUT, zb + 2.0, zb)
     # hinge: centre knuckle is bezel material; clear the lid knuckles' swing
@@ -828,10 +917,13 @@ def bezel_ring():
 def lid_ring():
     zt = S["Z_LIDCAP"]
     gold = shell(Z_LID, zt, R, RI)
-    for i in range(12):
-        a = i * 30.0 + 15.0
-        if abs(((a - 270.0 + 180) % 360) - 180) > 25:
-            gold = gold + rivet(a, lat_of((Z_LID + zt) / 2, R))
+    if ORNAMENT == "engraved":
+        gold = gold.cut(*plate_edge_grooves(Z_LID + 0.8, zt - 0.6))
+    else:
+        for i in range(12):
+            a = i * 30.0 + 15.0
+            if abs(((a - 270.0 + 180) % 360) - 180) > 25:
+                gold = gold + rivet(a, lat_of((Z_LID + zt) / 2, R))
     gold = gold + ((lid_knuckles(0.0) & Sphere(R + S["HINGE_PROUD"] + 0.01)) - Sphere(RI))
     gold = gold - bezel_knuckle_zone(S["MIN_CLR"])
     # pin: free through the entry-side knuckle, press fit in the far one
@@ -1035,11 +1127,14 @@ def lower_shell():
     tz0, tz1 = S["TRI_LOWER"]                 # tz0 > tz1 (upper edge first)
     gold = gold + raised_band(tz0, zs)          # seam strip
     gold = gold + raised_band(zc, tz1)          # bottom strip
-    panels, strap_zone, engr = ornament_row(tz1, tz0, S["TRI_N"], phase=15.0, seed=2)
-    tan = strap_zone - Sphere(R0)
+    panels, strap_zone, engr, beads = ornament_row(tz1, tz0, S["TRI_N"], phase=15.0, seed=2)
+    tan = strap_zone - Sphere(R0) if strap_zone is not None else None
     gold = gold + panels
-    for i in range(24):
-        gold = gold + rivet(i * 15.0, lat_of((tz0 + zs) / 2, R))
+    if beads:
+        gold = gold.fuse(*beads)
+    if ORNAMENT != "engraved":
+        for i in range(24):
+            gold = gold + rivet(i * 15.0, lat_of((tz0 + zs) / 2, R))
     # speaker grille: 1.4 mm holes inside the down-pointing panel at -X
     grille_th, grille_lat = 180.0 + 15.0 + 7.5, lat_of((tz0 + tz1) / 2)
     holes = []
@@ -1060,15 +1155,18 @@ def lower_shell():
     c = S["ORING_CORD"]
     gold = gold - ring(rg - c * 0.55, rg + c * 0.55, zs - c * 0.75, zs + 0.1)
     gold = gold - grille
-    tan = tan - grille
+    if tan is not None:
+        tan = tan - grille
     # medallion seat on the front: clear the ornament, sink the well, add the reader's rails
     if S["NFC_SEAT"]:
         zone = nfc_seat_clear_zone()
         gold = gold - zone
-        tan = tan - zone
+        if tan is not None:
+            tan = tan - zone
         gold = gold + nfc_seat_add() + nfc_seat_trim()
         gold = gold - nfc_seat_cut()
-        tan = tan - nfc_seat_cut()
+        if tan is not None:
+            tan = tan - nfc_seat_cut()
         gold = gold + (nfc_seat_trim() & nfc_seat_cut())     # the floor star survives the well cut
     # base-cap tabs
     for a in (0.0, 120.0, 240.0):
@@ -1076,17 +1174,22 @@ def lower_shell():
         gold = gold + tab
         gold = gold - Pos(bs(42) * math.cos(math.radians(a)), bs(42) * math.sin(math.radians(a)), zc + 2) * \
             Cylinder(S["M3_CLR"] / 2, 10)
-    return {"gold": gold, "tan": tan}
+    return {"gold": gold, "tan": tan} if tan is not None else {"gold": gold}
 
 
 def base_cap():
     zc, zf = S["Z_BASECAP"], S["Z_FOOT"]
     gold = Sphere(R0) & zslab(zf, zc)
     gold = gold + (Sphere(R) & zslab(zc - 2.5, zc))             # strip at the top edge
+    if ORNAMENT == "engraved":
+        # the bottom of the stack: raised to the full surface, lined like plate edges
+        gold = gold + (Sphere(R) & zslab(zf + 4.0, zc))
+        gold = gold.cut(*plate_edge_grooves(zf + 5.0, zc - 0.6))
+    petals = ORNAMENT != "engraved"
     # petals
     la0, la1 = S["PETAL_LAT"]
     lc = (la0 + la1) / 2
-    for i in range(S["PETALS"]):
+    for i in range(S["PETALS"] if petals else 0):
         th = i * 360.0 / S["PETALS"]
         top = gnomonic(th, lc, 0, la0 - lc)[1]
         bot = gnomonic(th, lc, 0, la1 - lc)[1]
