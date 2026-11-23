@@ -2,6 +2,25 @@
 
 `python3 liahona.py` rebuilds every part into `out/`. `python3 check.py` re-runs the checks. All dimensions are in the `S = dict(...)` settings block in `liahona.py`. Coordinates: ball centre at the origin, +Z up (display faces up), hinge at −Y (back).
 
+## v4 (175 mm): lid catch, medallion seal, engraved option
+Reprint these three for the 175 mm ball:
+| Part | What's new |
+|---|---|
+| `out/175mm/lid_ring.3mf` | A narrow **catch** at the front (a 10 mm tongue with a hook) and **two tapered pins** underneath. A **fingertip notch** sits above the catch |
+| `out/175mm/bezel_ring.3mf` | The slot and ledge for the catch, and two sockets for the pins |
+| `out/175mm/lower_shell.3mf` | A **medallion seal** on the lower front (under the catch), with the NFC reader mounted right behind it |
+
+Nothing else changes. The base cap no longer carries the reader.
+
+- **Closing the lid:** press the front down until it clicks. The pins line the lid up, so it can't sit off to one side even with a loose hinge. To open it, put a fingertip in the notch at the front and lift firmly. If the catch is too stiff or too loose, change `CATCH_HOOK` (0.5 mm) or `CATCH_PRELOAD` (0.1 mm) and reprint the lid ring.
+- **Medallion seal:** a round well about 35 mm across, with a raised ring, eight-point star and 1.6 mm floor. The ornament is cleared around it, so it reads as a seal. Campers hold their medallion over it. The screen now says "tap their medallion on the seal".
+- **Fitting the reader:** before the base cap goes on, reach in through the bottom opening. Put the PN532 board **antenna side out** (the side with the coil, no parts) onto the flat face behind the seal, between the four corner guides. Hold it with 0.8 mm foam tape or a few dots of hot glue. Route its cable up to the header as before. It reads through about 2.5 mm of plastic, much less than the old base cap.
+- **Print:** lower shell upright as before. The well walls are 60°, and the star and ring print without supports. Lid ring upside down: the tongue and pins point up, so no supports are needed for them.
+- **160 mm ball:** it has no room for the reader at the front (the seam wedge and base-cap tabs are in the way), so it keeps the reader on the base cap. Its lid catch and pins are in `out/`.
+
+### Optional: "curious workmanship" shells (engraved plates)
+`out/175mm/plates/` has the upper and lower shell with **framed plates engraved with rows of invented characters** in place of the leaf triangles. Everything else stays the same, including the band, the seal and the rivets. They fit the same parts. Rebuild with `LIAHONA_SIZE=175 LIAHONA_ORNAMENT=plates python3 liahona.py upper_shell lower_shell`. The engraving is 0.7 mm lines, 0.55 mm deep: print with a 0.4 mm nozzle at 0.12–0.16 mm layers so the characters stay crisp.
+
 ## Sizes
 | Size | Screen | Glass | Build |
 |---|---|---|---|
