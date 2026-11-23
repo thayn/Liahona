@@ -16,6 +16,7 @@
 #include "update.h"
 #include "journey_port.h"
 #include "logbuf.h"
+#include "freeze_watch.h"
 #include "liahona_proto.h"
 #include "esp_timer.h"
 #include "liahona_proto.h"
@@ -386,6 +387,7 @@ void ui_start(void)
     build_test();
     ui_journey_build();
     ui_cal_build();
+    freeze_watch_start();
     lv_screen_load(scr_compass);
     lv_timer_create(refresh_cb, 200, NULL);
     lv_timer_create(compass_timer_cb, 33, NULL);
