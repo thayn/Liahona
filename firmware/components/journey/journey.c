@@ -71,6 +71,12 @@ typedef struct {
 
 enum { PH_RUN = 0, PH_TRAVEL, PH_TBRIEF };
 
+/* Where campers hold their medallion: the 175 mm ball has a seal on the lower front.
+ * Build with -DJOURNEY_TAP_SPOT='""' for a ball without one. */
+#ifndef JOURNEY_TAP_SPOT
+#define JOURNEY_TAP_SPOT " on the seal"
+#endif
+
 static engine_t E;
 
 /* ------------------------------------------------------------------ helpers */
@@ -748,7 +754,7 @@ void journey_view(jv_view_t *v)
 
     if (E.mode == JV_GATHER) {
         copy(v->heading, sizeof(v->heading), "Gather your team");
-        snprintf(v->body, sizeof(v->body), "Everyone on %s taps their medallion to begin.",
+        snprintf(v->body, sizeof(v->body), "Everyone on %s taps their medallion" JOURNEY_TAP_SPOT " to begin.",
                  E.team_name[0] ? E.team_name : "the team");
         if (!v->status[0]) snprintf(v->status, sizeof(v->status), "%d of %d have tapped", E.ntapped, E.nmembers);
         return;
@@ -845,7 +851,7 @@ void journey_view(jv_view_t *v)
         if (!v->status[0]) copy(v->status, sizeof(v->status), "A leader taps their medallion when you've done it");
     } else if (!strcmp(type, "testimony")) {
         copy(v->heading, sizeof(v->heading), "Testimony");
-        copy(v->body, sizeof(v->body), prompt ? prompt : "Each of you share something you know is true, then tap your medallion.");
+        copy(v->body, sizeof(v->body), prompt ? prompt : "Each of you share something you know is true, then tap your medallion" JOURNEY_TAP_SPOT ".");
         if (!v->status[0]) snprintf(v->status, sizeof(v->status), "%d of %d have shared", E.ntapped, E.nmembers);
     } else if (!strcmp(type, "rest")) {
         copy(v->heading, sizeof(v->heading), "Rest");

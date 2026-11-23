@@ -9,7 +9,7 @@ Run:  python3 liahona.py   -> out/<part>__<colour>.stl, out/<part>.step, out/<pa
 """
 import math
 from pathlib import Path
-from build123d import (Box, Cylinder, Sphere, Pos, Rot, Axis, Plane, Vector, Wire, Face,
+from build123d import (Box, Cylinder, Cone, Sphere, Pos, Rot, Axis, Plane, Vector, Wire, Face,
                        Shell, Solid, Compound, extrude, revolve, export_step, export_stl)
 from shapely.geometry import Polygon as SPoly, Point as SPoint, LineString
 from shapely.ops import unary_union
@@ -24,6 +24,7 @@ import hebrew
 # Bought parts (switches, battery, boards, rod) keep their real sizes.
 SIZES = {
     "160": dict(BALL_D=160.0, DISP_D=115.0,    # ESP32-P4-WIFI6-Touch-LCD-3.4C (default)
+                NFC_SEAT=False,                # no room for the reader at the front: it stays on the base cap
                 AFTER=dict(GPS_RC=63.0, GPS_ZC=26.0, GPS_TILT=65.0)),   # GPS fits the smaller shoulder
     "175": dict(BALL_D=175.0, DISP_D=126.0),   # ESP32-P4-WIFI6-Touch-LCD-4C
 }
@@ -107,6 +108,26 @@ S = dict(
     PIN_ENTRY_SIDE=1,        # +1: pin goes in from the +X side (right, seen from the front)
     KNUCKLE_CENTER_W=12.0, KNUCKLE_GAP=0.4, KNUCKLE_SIDE_W=10.0,
     LID_OPEN_DEG=110.0,
+    # lid catch (front) + locating pins: stop the lid sliding sideways on a loose hinge
+    CATCH_ANGLE=90.0,        # front, opposite the hinge
+    CATCH_W=10.0,            # tongue width (along the rim)
+    CATCH_T=1.2,             # tongue thickness (radial): thin enough to flex
+    CATCH_L=8.0,             # tongue length below the lid seam
+    CATCH_HOOK=0.5,          # hook depth (how far it reaches under the ledge)
+    CATCH_PRELOAD=0.1,       # the ledge sits this much low, so the hook pulls the lid down
+    LOCPIN_ANGLES=(20.0, 160.0),
+    LOCPIN_D=(3.2, 2.2),     # tapered pin: base, tip
+    LOCPIN_L=3.0,
+    LOCPIN_CLR=0.15,
+    # medallion seat: the NFC reader sits behind a round well on the lower front
+    NFC_SEAT=True,    NFC_SEAT_THETA=90.0,     # front (opposite the hinge, under the lid catch)
+    NFC_SEAT_LAT=-36.0,      # below the band, clear of the seam wedge and the base cap
+    NFC_BOARD_D=None,        # reader's antenna face from the ball centre (None: as far out as fits)
+    NFC_FLOOR_T=1.6,         # well floor between the medallion and the antenna
+    NFC_FLOOR_D=30.0,        # flat floor diameter
+    NFC_WALL_DEG=60.0,       # well wall angle to the floor
+    NFC_TAPE=0.8,            # foam tape (or hot glue) between the reader and the floor
+    NFC_GUIDE_CLR=0.3,
     LID_SW=(12.8, 5.8, 6.5), LID_SW_ANGLE=292.0,     # measured micro switch (L, W, body H)
     LID_SW_CLR=0.25,         # clearance each side: the switch drops in from the top
     LID_SW_LEVER_OVER=1.0,   # the lever runs about 1 mm past the body lengthwise (measured)
@@ -141,7 +162,11 @@ if K < 1:
     S["TRI_UPPER"] = (S["TRI_UPPER"][0], min(S["TRI_UPPER"][1], S["Z_BEZEL"] - 3.6))
 RIVET_LIFT = 0.3 if K >= 1 else 0.0
 
+# LIAHONA_ORNAMENT=plates: the "curious workmanship" shells (engraved plates instead of leaves)
+ORNAMENT = __import__("os").environ.get("LIAHONA_ORNAMENT", "leaves")
 OUT_DIR = __import__("pathlib").Path(__file__).parent / ("out" if SIZE == "160" else f"out/{SIZE}mm")
+if ORNAMENT != "leaves":
+    OUT_DIR = OUT_DIR / ORNAMENT
 S.update(SIZES[SIZE].get("AFTER", {}))
 
 
@@ -312,6 +337,92 @@ def sprig(scale=1.0):
     curls = [SPoint(s * 1.8 * scale, -1.6 * scale).buffer(0.9 * scale).exterior.buffer(0.3)
              for s in (-1, 1)]
     return unary_union([outline, rib, stem] + curls)
+
+
+
+# ---- "curious workmanship": engraved plates ------------------------------------------------
+def glyph(i, u=1.0):
+    """An invented character (deterministic per i), drawn as strokes on a 3 x 4 grid,
+    `u` mm per grid step. Returns a shapely geometry (0.7 mm wide strokes)."""
+    import random
+    rnd = random.Random(1830 + i * 7919)
+    gp = lambda x, y: (x * u, y * u)
+    strokes = []
+    # a spine most characters share: vertical, slanted or a bar
+    kind = rnd.choice(("v", "v", "slant", "bar", "hook"))
+    x0 = rnd.choice((0, 1, 2))
+    if kind == "v":
+        strokes.append(LineString([gp(x0, 0), gp(x0, 3)]))
+    elif kind == "slant":
+        strokes.append(LineString([gp(0, rnd.choice((0, 1))), gp(2, 3)]))
+    elif kind == "bar":
+        y = rnd.choice((1, 2))
+        strokes.append(LineString([gp(0, y), gp(2, y)]))
+    else:
+        strokes.append(LineString([gp(1, 3), gp(1, 1), gp(0.3, 0.3), gp(1.4, 0)]))
+    for _ in range(rnd.choice((1, 2, 2, 3))):
+        t = rnd.random()
+        if t < 0.35:                                       # short tick or crossbar
+            a = (rnd.choice((0, 1, 2)), rnd.choice((0, 1, 2, 3)))
+            b = (min(2, max(0, a[0] + rnd.choice((-1, 1)))), min(3, max(0, a[1] + rnd.choice((-1, 0, 1)))))
+            if a != b:
+                strokes.append(LineString([gp(*a), gp(*b)]))
+        elif t < 0.7:                                      # little arc / loop
+            cx, cy = rnd.choice((0.5, 1, 1.5)), rnd.choice((0.7, 1.5, 2.3))
+            a0 = rnd.choice((0, 90, 180, 270))
+            arc = [(cx * u + 0.6 * u * math.cos(math.radians(a0 + k * 15)),
+                    cy * u + 0.6 * u * math.sin(math.radians(a0 + k * 15))) for k in range(13)]
+            strokes.append(LineString(arc))
+        else:                                              # dot
+            strokes.append(SPoint(*gp(rnd.choice((0, 1, 2)), rnd.choice((0, 3)))).buffer(0.25))
+    g = unary_union([st.buffer(0.35, 8) for st in strokes])
+    return affinity.translate(g, -u, -1.5 * u)            # centred on the cell
+
+
+def plate_row(z_lo, z_hi, n, phase=0.0, motif=True, seed=0):
+    """Framed plates between z_lo..z_hi, each engraved with rows of invented characters.
+    Same interface as triangle_row: (plates_gold, straps_tan, engraving_cutters)."""
+    la0, la1 = lat_of(z_lo), lat_of(z_hi)
+    if la0 > la1:
+        la0, la1 = la1, la0
+    step = 360.0 / n
+    lc = (la0 + la1) / 2
+    panels, cutters, feet = [], [], []
+    u = 1.45 * K                                            # character grid step (~4.4 mm tall)
+    for i in range(n):
+        tc = phase + i * step
+        xs = [gnomonic(tc, lc, d, 0)[0] for d in (-step / 2, step / 2)]
+        ys = [gnomonic(tc, lc, 0, d)[1] for d in (la0 - lc, la1 - lc)]
+        plate = SPoly([(xs[0], ys[0]), (xs[1], ys[0]), (xs[1], ys[1]), (xs[0], ys[1])]).buffer(
+            -S["STRAP_W"] / 2, join_style=2).buffer(-1.0).buffer(1.0)     # slightly rounded corners
+        panels.append(relief(plate, tc, lc, R - 0.4))
+        feet.append(cone_patch(plate, tc, lc, R0 - 0.5, R + 1.0))
+        if not motif:
+            continue
+        # engraved frame line, then rows of characters inside it
+        frame_line = plate.buffer(-1.3).exterior.buffer(0.35, 8)
+        inner = plate.buffer(-2.6)
+        bx0, by0, bx1, by1 = inner.bounds
+        cell_w, row_h = 3.2 * u, 4.6 * u
+        nrows = max(1, int((by1 - by0) // row_h))
+        ncols = max(1, int((bx1 - bx0) // cell_w))
+        oy = (by1 - by0 - nrows * row_h) / 2 + row_h / 2
+        ox = (bx1 - bx0 - ncols * cell_w) / 2 + cell_w / 2
+        chars = [frame_line]
+        for r in range(nrows):
+            for c in range(ncols):
+                g = glyph(seed * 997 + i * 61 + r * 17 + c, u)
+                chars.append(affinity.translate(g, bx0 + ox + c * cell_w, by1 - oy - r * row_h))
+        cutters.append(cone_patch(unary_union(chars).intersection(plate.buffer(-0.9)), tc, lc, R - 0.95, R + 1))
+    zone = shell(min(z_lo, z_hi), max(z_lo, z_hi), R, R0 - 0.3)
+    straps = zone.cut(*feet)
+    return union(panels), straps, [c for c in cutters if c is not None]
+
+
+def ornament_row(z_lo, z_hi, n, phase=0.0, seed=0):
+    if ORNAMENT == "plates":
+        return plate_row(z_lo, z_hi, n, phase, seed=seed)
+    return triangle_row(z_lo, z_hi, n, phase)
 
 
 def triangle_row(z_lo, z_hi, n, phase=0.0, motif=True):
@@ -513,7 +624,7 @@ def upper_shell():
     gold = shell(zs, zb, R0, RI)
     raised = [raised_band(tz1, zb), raised_band(bz1 + fw, tz0), raised_band(zs, bz0 - fw)]
     gold = gold + (union(raised) & zslab(zs, zb))
-    panels, strap_zone, engr = triangle_row(tz0, tz1, S["TRI_N"])
+    panels, strap_zone, engr = ornament_row(tz0, tz1, S["TRI_N"], seed=1)
     tan_straps = strap_zone - Sphere(R0)
     gold = gold + panels
     if engr:
@@ -590,6 +701,76 @@ def upper_shell():
     return {"gold": gold, "tan": tan, "clear": clear}
 
 
+
+# ---- lid catch + locating pins ------------------------------------------------------------
+def _catch_geo():
+    """Radii/heights of the front catch tongue (shared by lid and bezel)."""
+    r_in = sph_r(Z_LID, RI) + 0.35            # tongue inner face, just inside the lid wall
+    r_out = r_in + S["CATCH_T"]
+    zt = Z_LID - S["CATCH_L"]                 # tongue tip
+    h = S["CATCH_HOOK"]
+    z_hook_top = zt + h + 0.6                 # top of the hook's flat
+    return r_in, r_out, zt, h, z_hook_top
+
+
+def _at(angle):
+    return Rot(0, 0, angle - 90.0)            # local +Y = radial at `angle`, local X = along the rim
+
+
+def _yz_prism(pts, width):
+    """Polygon in the (radial Y, Z) plane, extruded `width` along X (centred)."""
+    w = Wire.make_polygon([Vector(-width / 2, y, z) for y, z in pts], close=True)
+    return extrude(Face(w), width, dir=(1, 0, 0))
+
+
+def lid_catch():
+    """Tongue + hook hanging under the lid at the front. It flexes outward as the lid
+    closes, then the hook drops under a ledge in the bezel."""
+    r_in, r_out, zt, h, zh = _catch_geo()
+    w = S["CATCH_W"]
+    tongue = Pos(0, (r_in + r_out) / 2, (zt + Z_LID) / 2 + 0.01) * Box(w, r_out - r_in, Z_LID - zt + 0.02)
+    hook = _yz_prism([(r_in + 0.01, zt), (r_in - h, zt + h), (r_in - h, zh), (r_in + 0.01, zh + 0.6)], w)
+    return _at(S["CATCH_ANGLE"]) * (tongue + hook)
+
+
+def bezel_catch_cut():
+    r_in, r_out, zt, h, zh = _catch_geo()
+    w = S["CATCH_W"] + 0.6
+    slot = Pos(0, (r_in - 0.05 + r_out + h + 0.15) / 2, (zt - 0.6 + Z_LID + 1) / 2) * \
+        Box(w, r_out + h + 0.15 - (r_in - 0.05), Z_LID + 1 - (zt - 0.6))
+    z_ledge = zh + 0.3 - S["CATCH_PRELOAD"]
+    recess = Pos(0, (r_in - h - 0.25 + r_in) / 2, (zt - 0.6 + z_ledge) / 2) * Box(w, h + 0.25, z_ledge - (zt - 0.6))
+    return _at(S["CATCH_ANGLE"]) * (slot + recess)
+
+
+def _pin_r():
+    return (sph_r(Z_LID, RI) + sph_r(Z_LID, R)) / 2 - 0.7      # middle of the lid wall, a bit inward
+
+
+def lid_pins():
+    d0, d1 = S["LOCPIN_D"]
+    L_ = S["LOCPIN_L"]
+    out = []
+    for a in S["LOCPIN_ANGLES"]:
+        out.append(_at(a) * Pos(0, _pin_r(), Z_LID - L_ / 2 + 0.01) * Cone(d1 / 2, d0 / 2, L_ + 0.02))
+    return union(out)
+
+
+def bezel_pin_sockets():
+    d0, d1 = S["LOCPIN_D"]
+    L_, c = S["LOCPIN_L"] + 0.5, S["LOCPIN_CLR"]
+    out = []
+    for a in S["LOCPIN_ANGLES"]:
+        # socket a little deeper than the pin, open at the seam (extends 0.5 above it)
+        out.append(_at(a) * Pos(0, _pin_r(), Z_LID - L_ / 2 + 0.25) * Cone(d1 / 2 + c, d0 / 2 + c + 0.05, L_ + 0.5))
+    return union(out)
+
+
+def lid_lift_notch():
+    """Fingertip notch in the lid's outer bottom edge, at the catch."""
+    return _at(S["CATCH_ANGLE"]) * Pos(0, sph_r(Z_LID, R), Z_LID + 0.8) * Box(14.0, 3.0, 1.6)
+
+
 def bezel_ring():
     zb = S["Z_BEZEL"]
     gold = Sphere(R) & zslab(zb, Z_LID)
@@ -639,6 +820,8 @@ def bezel_ring():
     gold = gold - pp * Pos(0, 0, (z_lo + z_hi) / 2) * Box(bl + 2 * g, bw + 2 * g, z_hi - z_lo)
     # slot over the slider: its full travel, open through the bezel top
     gold = gold - pp * Pos(0, 0, bh / 2 + 3.0) * Box(aw + S["PWR_SW_TRAVEL"] + 2 * g + 0.2, aw + 2 * g + 0.2, 6.0)
+    # front catch slot + ledge, and sockets for the lid's locating pins
+    gold = gold - bezel_catch_cut() - bezel_pin_sockets()
     return {"gold": gold}
 
 
@@ -656,6 +839,8 @@ def lid_ring():
     e = S["PIN_ENTRY_SIDE"]
     gold = gold - Pos(e * (x_in + 30), AX_Y, Z_AX) * Rot(0, 90, 0) * Cylinder(S["PIN_HOLE_FREE"] / 2, 60)
     gold = gold - Pos(-e * (x_in + 30), AX_Y, Z_AX) * Rot(0, 90, 0) * Cylinder(S["PIN_HOLE_PRESS"] / 2, 60)
+    # front catch + two tapered locating pins (hold it shut, stop it sliding sideways)
+    gold = gold + lid_catch() + lid_pins() - lid_lift_notch()
     # screw tabs at the top (on the bed when printed upside down)
     for a in (30.0, 150.0, 270.0):
         tab = rev([(bs(41.0), zt - 3.0), (RI + 1, zt - 3.0), (RI + 1, zt), (bs(41.0), zt)], 16.0, a - 8.0) & Sphere(RI + 0.5)
@@ -767,13 +952,90 @@ def spindle_rod():
     return Pos(0, 0, (z0 + z1) / 2) * Cylinder(S["SPINDLE_ROD_D"] / 2, z1 - z0)
 
 
+
+# ---- medallion seat (NFC reader behind a well on the lower front) --------------------------
+def nfc_plane():
+    n, e, _ = frame(S["NFC_SEAT_THETA"], S["NFC_SEAT_LAT"])
+    return Plane(origin=(0, 0, 0), x_dir=e, z_dir=n)          # local y = up the surface
+
+
+def nfc_board_d():
+    if S["NFC_BOARD_D"]:
+        return S["NFC_BOARD_D"]
+    nl, nw, _ = S["NFC"]
+    return math.floor(math.sqrt((RI - 0.5) ** 2 - (nl / 2) ** 2 - (nw / 2) ** 2) * 4) / 4   # corners clear the wall
+
+
+def _nfc_geo():
+    d = nfc_board_d()
+    z_in = d + S["NFC_TAPE"]                                # floor's inner face (tape between)
+    z_out = z_in + S["NFC_FLOOR_T"]                         # floor's outer face
+    k = 1.0 / math.tan(math.radians(S["NFC_WALL_DEG"]))     # radius grows k per mm of height
+    r0 = S["NFC_FLOOR_D"] / 2
+    # where the well wall meets the base surface (solve r0 + k h = sqrt(R0^2 - (z_out+h)^2))
+    h = 0.0
+    while r0 + k * h < math.sqrt(max(R0 ** 2 - (z_out + h) ** 2, 0)):
+        h += 0.02
+    r_rim = r0 + k * h
+    return d, z_in, z_out, k, r0, r_rim
+
+
+def _frustum(r_bot, z0, z1, k):
+    return Pos(0, 0, (z0 + z1) / 2) * Cone(r_bot, r_bot + k * (z1 - z0), z1 - z0)
+
+
+def nfc_seat_add():
+    """Material added inside the lower shell: a flat mounting face behind the well, and
+    four corner guides. The reader goes in through the bottom opening, antenna side out,
+    and is held against the face with foam tape (or a few dots of hot glue)."""
+    d, z_in, z_out, k, r0, r_rim = _nfc_geo()
+    nl, nw, nh = S["NFC"]
+    c = S["NFC_GUIDE_CLR"]
+    plate = Pos(0, 0, (z_in + R0 + 4) / 2) * Box(nl + 2 * c + 5.0, nw + 2 * c + 5.0, R0 + 4 - z_in)
+    guides = []
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x0, y0 = sx * (nl / 2 + c + 0.8), sy * (nw / 2 + c + 0.8)
+            guides.append(Pos(x0, y0 - sy * 3.0, z_in - 1.25 + 0.01) * Box(1.6, 7.6, 2.5))
+            guides.append(Pos(x0 - sx * 3.0, y0, z_in - 1.25 + 0.01) * Box(7.6, 1.6, 2.5))
+    return (nfc_plane() * (plate + union(guides))) & Sphere(RI + 0.3)
+
+
+def nfc_seat_cut():
+    """The well itself, from the floor out through the surface and the ornament."""
+    d, z_in, z_out, k, r0, r_rim = _nfc_geo()
+    return nfc_plane() * _frustum(r0, z_out, R + 3, k)
+
+
+def nfc_seat_clear_zone():
+    """Ornament (panels, straps, strips) removed around the well, so it reads as a seal."""
+    _, _, _, _, _, r_rim = _nfc_geo()
+    return cone_patch(SPoint(0, 0).buffer(r_rim + 3.2, 64), S["NFC_SEAT_THETA"], S["NFC_SEAT_LAT"], R0 - 0.01, R + 1)
+
+
+def nfc_seat_trim():
+    """A raised ring round the well with eight rivets, and a star on the floor."""
+    _, _, z_out, _, _, r_rim = _nfc_geo()
+    th, la = S["NFC_SEAT_THETA"], S["NFC_SEAT_LAT"]
+    ring_ = SPoint(0, 0).buffer(r_rim + 2.8, 64).difference(SPoint(0, 0).buffer(r_rim + 0.2, 64))
+    out = relief(ring_, th, la, R)
+    # star on the floor: 8 points, 0.8 mm high
+    pts = []
+    for i in range(16):
+        a = math.radians(i * 22.5 + 90)
+        rr = 7.0 if i % 2 == 0 else 2.6
+        pts.append(Vector(rr * math.cos(a), rr * math.sin(a), z_out - 0.01))
+    star = extrude(Face(Wire.make_polygon(pts, close=True)), 0.81, dir=(0, 0, 1))
+    return out + nfc_plane() * star
+
+
 def lower_shell():
     zs, zc = S["Z_SEAM"], S["Z_BASECAP"]
     gold = shell(zc, zs, R0, RI)
     tz0, tz1 = S["TRI_LOWER"]                 # tz0 > tz1 (upper edge first)
     gold = gold + raised_band(tz0, zs)          # seam strip
     gold = gold + raised_band(zc, tz1)          # bottom strip
-    panels, strap_zone, engr = triangle_row(tz1, tz0, S["TRI_N"], phase=15.0)
+    panels, strap_zone, engr = ornament_row(tz1, tz0, S["TRI_N"], phase=15.0, seed=2)
     tan = strap_zone - Sphere(R0)
     gold = gold + panels
     for i in range(24):
@@ -799,6 +1061,15 @@ def lower_shell():
     gold = gold - ring(rg - c * 0.55, rg + c * 0.55, zs - c * 0.75, zs + 0.1)
     gold = gold - grille
     tan = tan - grille
+    # medallion seat on the front: clear the ornament, sink the well, add the reader's rails
+    if S["NFC_SEAT"]:
+        zone = nfc_seat_clear_zone()
+        gold = gold - zone
+        tan = tan - zone
+        gold = gold + nfc_seat_add() + nfc_seat_trim()
+        gold = gold - nfc_seat_cut()
+        tan = tan - nfc_seat_cut()
+        gold = gold + (nfc_seat_trim() & nfc_seat_cut())     # the floor star survives the well cut
     # base-cap tabs
     for a in (0.0, 120.0, 240.0):
         tab = rev([(bs(37.0), zc), (R, zc), (R, zc + 3.0), (bs(37.0), zc + 3.0)], 14.0, a - 7.0) & Sphere(RI + 0.5)
@@ -927,7 +1198,10 @@ def components():
     bl_, bw_, bh_ = S["PWR_SW_BODY"]
     c["pwr_switch"] = pwr_switch_plane() * Box(bl_, bw_, bh_)
     nl, nw, nh = S["NFC"]
-    c["nfc"] = Pos(0, 0, S["Z_BASECAP"] + nh / 2 + 0.3) * Box(nl, nw, nh)
+    if S["NFC_SEAT"]:
+        c["nfc"] = nfc_plane() * Pos(0, 0, nfc_board_d() - nh / 2) * Box(nl, nw, nh)
+    else:
+        c["nfc"] = Pos(0, 0, S["Z_BASECAP"] + nh / 2 + 0.3) * Box(nl, nw, nh)
     c["usb_6069"] = cyl(S["USB_BORE"] / 2 - 0.2, S["Z_FOOT"] + S["USB_SKIN"] + 0.05, S["Z_FOOT"] + S["USB_SKIN"] + 14)
     c["spindle_rod"] = spindle_rod()
     return c
