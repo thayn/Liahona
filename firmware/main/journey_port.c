@@ -182,6 +182,8 @@ static void journey_task(void *arg)
 }
 
 /* ---------------------------------------------------------------- UI calls (LVGL task) */
+SemaphoreHandle_t journey_port_lock(void) { return s_lock; }
+
 void journey_ui_view(jv_view_t *v) { if (!s_lock) { memset(v, 0, sizeof(*v)); return; } LOCK(); journey_view(v); UNLOCK(); }
 void journey_ui_choice(int i)  { LOCK(); journey_choice(i); UNLOCK(); }
 void journey_ui_continue(void) { LOCK(); journey_continue(); UNLOCK(); }

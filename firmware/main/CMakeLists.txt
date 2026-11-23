@@ -1,7 +1,7 @@
 idf_component_register(
     SRCS "main.c" "ui.c" "sensors.c" "gps.c" "nfc.c" "lora.c" "leds.c"
          "inputs.c" "storage.c" "audio_test.c" "ui_compass.c"
-         "journey_port.c" "ui_journey.c" "update.c" "ui_cal.c" "c6_update.c" "logbuf.c" "ball_jpeg.c"
+         "journey_port.c" "ui_journey.c" "update.c" "ui_cal.c" "c6_update.c" "logbuf.c" "ball_jpeg.c" "freeze_watch.c"
          "fonts/font_cinzel_56.c" "fonts/font_cinzel_bold_46.c"
          "fonts/font_cinzel_30.c" "fonts/font_inter_22.c"
     INCLUDE_DIRS "."
