@@ -11,6 +11,8 @@
  *   5. reports each step back over LoRa (LP_UPDATE) and on the self-test page.
  *
  * wifi.json: { "ssid": "...", "password": "...", "manager": "https://...", "key": "..." }
+ *   optional "networks": [ {"ssid": "...", "password": "..."}, ... ] tried in order after
+ *   the main one, e.g. a phone hotspot as a fallback for the camp Wi-Fi.
  * Made by the Manager: Settings -> Balls over Wi-Fi -> Download wifi.json.
  */
 #include <stdio.h>
@@ -39,6 +41,7 @@
 #include "update.h"
 #include "c6_update.h"
 #include "logbuf.h"
+#include "esp_heap_caps.h"
 
 static const char *TAG = "update";
 
@@ -252,6 +255,35 @@ static int ota_install(const char *url)
 }
 
 /* ---------------------------------------------------------------- the update */
+/* The Manager can send the Wi-Fi list with the package: rewrite wifi.json if it changed,
+ * so a closed-up ball learns a new network (it still needs one it knows to get there). */
+static void apply_networks(const cJSON *m)
+{
+    const cJSON *nl = cJSON_GetObjectItem(m, "networks");
+    if (!cJSON_IsArray(nl) || cJSON_GetArraySize(nl) < 1) return;
+    char *wj = read_text(WIFI_FILE, 4096);
+    cJSON *w = wj ? cJSON_Parse(wj) : NULL;
+    if (!w) { free(wj); return; }
+    const cJSON *first = cJSON_GetArrayItem(nl, 0);
+    const char *s0 = cJSON_GetStringValue(cJSON_GetObjectItem(first, "ssid"));
+    if (!s0 || !s0[0]) { cJSON_Delete(w); free(wj); return; }
+    cJSON_ReplaceItemInObject(w, "ssid", cJSON_CreateString(s0));
+    const char *p0 = cJSON_GetStringValue(cJSON_GetObjectItem(first, "password"));
+    cJSON_ReplaceItemInObject(w, "password", cJSON_CreateString(p0 ? p0 : ""));
+    cJSON *rest = cJSON_CreateArray();
+    for (int i = 1; i < cJSON_GetArraySize(nl); i++) cJSON_AddItemToArray(rest, cJSON_Duplicate(cJSON_GetArrayItem(nl, i), true));
+    cJSON_DeleteItemFromObject(w, "networks");
+    cJSON_AddItemToObject(w, "networks", rest);
+    char *out = cJSON_Print(w);
+    if (out && strcmp(out, wj) != 0) {
+        FILE *f = fopen(WIFI_FILE, "w");
+        if (f) { fputs(out, f); fputc('\n', f); fclose(f); ESP_LOGI(TAG, "Wi-Fi list updated from the Manager (%d network(s))", cJSON_GetArraySize(nl)); }
+    }
+    free(out);
+    free(wj);
+    cJSON_Delete(w);
+}
+
 static void run_update(void)
 {
     char *wj = read_text(WIFI_FILE, 4096);
@@ -271,23 +303,54 @@ static void run_update(void)
     /* "update all": spread the balls out so their radio reports don't collide */
     STATE_LOCK(); int me_id = g_state.ball_id; STATE_UNLOCK();
     vTaskDelay(pdMS_TO_TICKS(300 * (me_id % 16)));
-    report(LP_UPD_WIFI, 0, 0, 0, "Joining Wi-Fi...");
-    if (!wifi_up(ssid, pass)) { cJSON_Delete(w); wifi_down(); fail(LP_UPE_WIFI, 0, 0); return; }
+    /* networks to try: the main one, then any in "networks" */
+    const char *nets[6][2];
+    int nn = 0;
+    nets[nn][0] = ssid; nets[nn][1] = pass; nn++;
+    cJSON *more = cJSON_GetObjectItem(w, "networks"), *it;
+    cJSON_ArrayForEach(it, more) {
+        const char *s2 = cJSON_GetStringValue(cJSON_GetObjectItem(it, "ssid"));
+        if (s2 && nn < 6) { nets[nn][0] = s2; nets[nn][1] = cJSON_GetStringValue(cJSON_GetObjectItem(it, "password")); nn++; }
+    }
 
-    report(LP_UPD_CHECK, 0, 0, 0, "Asking the Manager what's new...");
     static char url[2560];                          /* presigned S3 links run to ~2 KB */
     STATE_LOCK(); int ball = g_state.ball_id; STATE_UNLOCK();
     snprintf(url, sizeof(url), "%s/api/ball/package?key=%s&ball=%d", manager, key, ball);
-    int status;
-    char *mj = http_get_text(url, 256 * 1024, &status);
+    int status = 0;
+    char *mj = NULL;
+    bool joined = false;
+    for (int ni = 0; ni < nn; ni++) {
+        char t[64];
+        snprintf(t, sizeof(t), "Joining %.40s...", nets[ni][0]);
+        report(LP_UPD_WIFI, 0, 0, 0, t);
+        if (!wifi_up(nets[ni][0], nets[ni][1])) { ESP_LOGW(TAG, "couldn't join %s", nets[ni][0]); wifi_down(); continue; }
+        joined = true;
+        report(LP_UPD_CHECK, 0, 0, 0, "Asking the Manager what's new...");
+        /* a few tries: the first connection after joining sometimes times out */
+        for (int attempt = 0; attempt < 3; attempt++) {
+            ESP_LOGI(TAG, "free RAM: internal %u KB (largest %u KB), PSRAM %u KB",
+                     (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                     (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024),
+                     (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
+            mj = http_get_text(url, 256 * 1024, &status);
+            if (status > 0) break;
+            ESP_LOGW(TAG, "Manager try %d: %s", attempt + 1, esp_err_to_name(s_http_err));
+            free(mj); mj = NULL;
+            vTaskDelay(pdMS_TO_TICKS(2000 * (attempt + 1)));
+        }
+        if (status > 0) break;
+        wifi_down();                                /* no Manager from here: try the next network */
+    }
     cJSON_Delete(w);
+    if (!joined) { fail(LP_UPE_WIFI, 0, 0); return; }
     if (status == 401 || status == 403) { free(mj); wifi_down(); fail(LP_UPE_KEY, 0, 0); return; }
     cJSON *m = (mj && status == 200) ? cJSON_Parse(mj) : NULL;
     cJSON *files = cJSON_GetObjectItem(m, "files");
     if (!cJSON_IsArray(files)) {
         /* say why on the screen, so a closed-up ball can still be diagnosed */
         char t[64];
-        if (status == 0) snprintf(t, sizeof(t), "Manager: can't connect (%s)", esp_err_to_name(s_http_err));
+        if (status <= 0) snprintf(t, sizeof(t), "Manager: can't connect (%s, RAM %uK)", esp_err_to_name(s_http_err),
+                                  (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024));
         else if (status != 200) snprintf(t, sizeof(t), "Manager: HTTP %d", status);
         else snprintf(t, sizeof(t), "Manager: bad reply");
         ESP_LOGW(TAG, "%s  host=%.60s  reply=%.200s", t, manager, mj ? mj : "");
@@ -297,6 +360,7 @@ static void run_update(void)
         return;
     }
     free(mj);
+    apply_networks(m);
 
     /* send any saved crash logs (and a snapshot of this run) to the Manager */
     int nlogs = logbuf_upload(manager, ball_key, ball);
