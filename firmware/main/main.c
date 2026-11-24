@@ -6,12 +6,15 @@
  */
 #include <string.h>
 #include "esp_log.h"
+#include "driver/gpio.h"
+#include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_ota_ops.h"
 #include "esp_app_desc.h"
 #include "nvs_flash.h"
 #include "bsp/esp-bsp.h"
+#include "board_pins.h"
 #include "liahona.h"
 #include "update.h"
 #include "c6_update.h"
@@ -35,6 +38,29 @@ static void firmware_info(void)
     esp_ota_mark_app_valid_cancel_rollback();
 }
 
+/* Standard bus recovery: clock SCL until a stuck device lets go of SDA, then a STOP. */
+static void i2c_unstick(int sda, int scl)
+{
+    gpio_config_t io = { .pin_bit_mask = (1ULL << sda) | (1ULL << scl), .mode = GPIO_MODE_INPUT_OUTPUT_OD,
+                         .pull_up_en = GPIO_PULLUP_ENABLE };
+    gpio_config(&io);
+    gpio_set_level(sda, 1);
+    gpio_set_level(scl, 1);
+    esp_rom_delay_us(10);
+    if (gpio_get_level(sda)) { gpio_reset_pin(sda); gpio_reset_pin(scl); return; }
+    ESP_LOGW(TAG, "I2C bus stuck (SDA low): clocking it free");
+    for (int i = 0; i < 18 && !gpio_get_level(sda); i++) {
+        gpio_set_level(scl, 0); esp_rom_delay_us(10);
+        gpio_set_level(scl, 1); esp_rom_delay_us(10);
+    }
+    gpio_set_level(sda, 0); esp_rom_delay_us(10);          /* STOP: SDA rises while SCL is high */
+    gpio_set_level(scl, 1); esp_rom_delay_us(10);
+    gpio_set_level(sda, 1); esp_rom_delay_us(10);
+    ESP_LOGW(TAG, "I2C bus %s", gpio_get_level(sda) ? "free again" : "still stuck: turn the ball fully off and on");
+    gpio_reset_pin(sda);
+    gpio_reset_pin(scl);
+}
+
 void app_main(void)
 {
     logbuf_start();          /* log ring that survives a crash (logbuf.c) */
@@ -48,7 +74,10 @@ void app_main(void)
     }
     firmware_info();
 
-    /* Shared I2C bus (touch, codec, GPS, compass, NFC). */
+    /* Shared I2C bus (touch, codec, GPS, compass, NFC). A restart doesn't power-cycle the
+     * devices, so one stuck mid-byte (holding SDA low) would make the touch screen
+     * "not found" and the BSP stops. Clock it free first. */
+    i2c_unstick(I2C_SDA_PIN, I2C_SCL_PIN);
     ESP_ERROR_CHECK(bsp_i2c_init());
     i2c_master_bus_handle_t bus = bsp_i2c_get_handle();
 
