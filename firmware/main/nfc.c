@@ -13,6 +13,7 @@
 static const char *TAG = "nfc";
 
 static i2c_master_dev_handle_t s_nfc;
+static i2c_master_bus_handle_t s_bus;
 
 #define PN_HOST_TO_PN 0xD4
 #define PN_PN_TO_HOST 0xD5
@@ -25,6 +26,17 @@ static bool wait_ready(int timeout_ms)
         vTaskDelay(pdMS_TO_TICKS(5));
     }
     return false;
+}
+
+/* A command that didn't finish (e.g. a slow or odd tag still on the reader): sending an
+ * ACK frame tells the PN532 to drop it, so it isn't still talking when we start the next. */
+static void pn_abort(void)
+{
+    static const uint8_t ACKF[6] = { 0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00 };
+    i2c_master_transmit(s_nfc, ACKF, sizeof(ACKF), 50);
+    vTaskDelay(pdMS_TO_TICKS(20));
+    uint8_t junk[16];
+    i2c_master_receive(s_nfc, junk, sizeof(junk), 50);
 }
 
 /* Send a command; returns number of payload bytes after [D5, cmd+1], or -1. */
@@ -50,7 +62,7 @@ static int pn_cmd(uint8_t cmd, const uint8_t *p, int plen, uint8_t *out, int out
     if (memcmp(ack + 1, ACK, 6) != 0) return -1;
 
     /* Response frame */
-    if (!wait_ready(timeout_ms)) return -1;
+    if (!wait_ready(timeout_ms)) { pn_abort(); return -1; }
     uint8_t r[64];
     if (i2c_master_receive(s_nfc, r, sizeof(r), 50) != ESP_OK) return -1;
     /* r[0]=status, r[1..3]=00 00 FF, r[4]=LEN, r[5]=LCS, r[6]=D5, r[7]=cmd+1 */
@@ -93,9 +105,25 @@ static void nfc_task(void *arg)
     const uint8_t retries[] = { 0x05, 0xFF, 0x01, 0x02 };           /* don't wait forever */
     pn_cmd(0x32, retries, sizeof(retries), d, sizeof(d), 100);
 
+    int fails = 0;
     while (1) {
         const uint8_t list[] = { 0x01, 0x00 };                      /* 1 target, ISO14443A */
         int n = pn_cmd(0x4A, list, sizeof(list), d, sizeof(d), 300);
+        /* "no tag" is a normal answer (NbTg = 0); -1 means the reader or the bus is
+         * misbehaving. The bus is shared with the touch screen, so don't let it stay stuck. */
+        if (n < 0) {
+            if (++fails >= 5) {
+                ESP_LOGW(TAG, "reader not answering: resetting the I2C bus");
+                i2c_master_bus_reset(s_bus);
+                vTaskDelay(pdMS_TO_TICKS(50));
+                pn_abort();
+                pn_cmd(0x14, sam, sizeof(sam), d, sizeof(d), 100);
+                pn_cmd(0x32, retries, sizeof(retries), d, sizeof(d), 100);
+                fails = 0;
+            }
+        } else {
+            fails = 0;
+        }
         STATE_LOCK();
         if (n >= 6 && d[0] >= 1) {
             /* d: NbTg, Tg, SENS_RES(2), SEL_RES, NFCIDLength, NFCID... */
@@ -129,6 +157,7 @@ static void nfc_task(void *arg)
 
 void nfc_start(i2c_master_bus_handle_t bus)
 {
+    s_bus = bus;
     i2c_device_config_t cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address  = I2C_ADDR_NFC,

@@ -10,6 +10,9 @@
 /* ---- Shared I2C bus (SH1.0 / Stemma QT port + header pins 3/5) ----
  * The bus itself is created by the Waveshare BSP (SDA GPIO7, SCL GPIO8).
  * On-board devices: ES8311 codec 0x18, mic ADC 0x40, GT911 touch 0x5D. */
+#define I2C_SDA_PIN   7             /* shared bus (BSP); used only to free a stuck bus at boot */
+#define I2C_SCL_PIN   8
+
 #define I2C_ADDR_GPS        0x10    /* Adafruit PA1010D mini GPS        */
 #define I2C_ADDR_MAG        0x1C    /* Adafruit LIS3MDL magnetometer    */
 #define I2C_ADDR_NFC        0x24    /* PN532 (DIP: 1 ON, 2 OFF = I2C)   */
