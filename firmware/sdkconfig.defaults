@@ -40,3 +40,6 @@ CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
 
 # Freeze watch (freeze_watch.c) lists every task's state when the screen stops updating
 CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+
+# TLS buffers in PSRAM: the screen, audio and journey tasks leave little internal RAM
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
